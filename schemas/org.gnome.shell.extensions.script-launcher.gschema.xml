@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="org.gnome.shell.extensions.launcher" path="/org/gnome/shell/extensions/launcher/">
+  <schema id="org.gnome.shell.extensions.script-launcher" path="/org/gnome/shell/extensions/script-launcher/">
     <key name="path" type="s">
       <default>""</default>
     </key>
