@@ -19,5 +19,17 @@
     <key name="strip" type="b">
       <default>true</default>
     </key>
+    <key name="custom-icons" type="b">
+      <default>false</default>
+    </key>
+    <key name="custom-icon-map" type="s">
+      <default>"{}"</default>
+    </key>
+    <key name="use-custom-top-icon" type="b">
+      <default>false</default>
+    </key>
+    <key name="top-icon-name" type="s">
+      <default>"gnome-terminal"</default>
+    </key>
   </schema>
 </schemalist>
