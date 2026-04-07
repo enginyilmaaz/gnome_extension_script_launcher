@@ -2,6 +2,8 @@
 
 ## Run scripts from a panel indicator
 
+A customized fork of [Launcher](https://extensions.gnome.org/extension/5874/launcher/).
+
 A GNOME Shell extension that lets you launch `.sh` scripts from the top panel. Place your scripts in a directory, and they appear as a searchable menu.
 
 ### Features
