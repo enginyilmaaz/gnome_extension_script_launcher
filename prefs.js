@@ -293,10 +293,24 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowStrip.add_suffix(toggleStrip);
     rowStrip.activatable_widget = toggleStrip;
 
-    // Filter File Extensions
-    const rowFileExt = new Adw.ActionRow({
+    // Filter File Extensions - toggle row
+    const rowFilterToggle = new Adw.ActionRow({
       title: "Filter File Extensions",
-      subtitle: "Comma-separated (e.g. .sh,.py,.js). Empty shows all files",
+      subtitle: "Only show files with specific extensions",
+    });
+    group.add(rowFilterToggle);
+
+    const toggleFilter = new Gtk.Switch({
+      active: settings.get_string("file-extensions").trim() !== "",
+      valign: Gtk.Align.CENTER,
+    });
+    rowFilterToggle.add_suffix(toggleFilter);
+    rowFilterToggle.activatable_widget = toggleFilter;
+
+    // Filter File Extensions - input row
+    const rowFileExt = new Adw.ActionRow({
+      title: "Extensions",
+      subtitle: "Comma-separated (e.g. .sh,.py,.js)",
     });
     group.add(rowFileExt);
 
@@ -304,7 +318,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
       placeholder_text: ".sh,.py,.js",
       text: settings.get_string("file-extensions"),
       valign: Gtk.Align.CENTER,
-      width_request: 200,
+      hexpand: true,
     });
 
     settings.bind(
@@ -313,6 +327,14 @@ export default class LauncherPreferences extends ExtensionPreferences {
       "text",
       Gio.SettingsBindFlags.DEFAULT,
     );
+
+    // Sensitivity based on toggle
+    const updateFilterSensitivity = () => {
+      const active = toggleFilter.get_active();
+      entryFileExt.set_sensitive(active);
+    };
+    toggleFilter.connect('notify::active', updateFilterSensitivity);
+    entryFileExt.set_sensitive(toggleFilter.get_active());
 
     rowFileExt.add_suffix(entryFileExt);
 
