@@ -293,6 +293,29 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowStrip.add_suffix(toggleStrip);
     rowStrip.activatable_widget = toggleStrip;
 
+    // Filter File Extensions
+    const rowFileExt = new Adw.ActionRow({
+      title: "Filter File Extensions",
+      subtitle: "Comma-separated (e.g. .sh,.py,.js). Empty shows all files",
+    });
+    group.add(rowFileExt);
+
+    const entryFileExt = new Gtk.Entry({
+      placeholder_text: ".sh,.py,.js",
+      text: settings.get_string("file-extensions"),
+      valign: Gtk.Align.CENTER,
+      width_request: 200,
+    });
+
+    settings.bind(
+      "file-extensions",
+      entryFileExt,
+      "text",
+      Gio.SettingsBindFlags.DEFAULT,
+    );
+
+    rowFileExt.add_suffix(entryFileExt);
+
     // Backup & Import group
     const backupGroup = new Adw.PreferencesGroup({
       title: "Backup & Import",
@@ -336,7 +359,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
               file = Gio.File.new_for_path(path);
             }
             const data = {};
-            const keys = ['path', 'default-icon', 'strip',
+            const keys = ['path', 'default-icon', 'strip', 'file-extensions',
                            'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
             keys.forEach(key => {
               const variant = settings.get_value(key);

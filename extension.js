@@ -101,7 +101,7 @@ export default class LauncherExtension extends Extension {
 
     this._getScripts(this._path).forEach((script) => {
       const scriptName = script.get_name();
-      const baseName = scriptName.replace(/\.sh$/, "");
+      const baseName = scriptName.replace(/\.[^.]+$/, "");
 
       // Check for matching icon files (.svg or .png)
       let iconName = null;
@@ -172,8 +172,14 @@ export default class LauncherExtension extends Extension {
 
       const fileType = fileInfo.get_file_type();
       const fileName = fileInfo.get_name();
-      // Only include .sh files
-      if (fileType === Gio.FileType.REGULAR && fileName.endsWith(".sh")) {
+      // Filter by configured file extensions
+      const extSetting = this._settings.get_string("file-extensions").trim();
+      const extensions = extSetting
+        ? extSetting.split(',').map(e => e.trim().toLowerCase()).filter(e => e)
+        : [];
+      const matchesExt = extensions.length === 0 ||
+        extensions.some(ext => fileName.toLowerCase().endsWith(ext));
+      if (fileType === Gio.FileType.REGULAR && matchesExt) {
         scripts.push(fileInfo);
       }
     }
