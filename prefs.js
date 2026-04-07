@@ -2,6 +2,7 @@ import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/
 import Adw from "gi://Adw";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
+import Gdk from "gi://Gdk";
 import Gtk from "gi://Gtk";
 
 export default class LauncherPreferences extends ExtensionPreferences {
@@ -17,14 +18,25 @@ export default class LauncherPreferences extends ExtensionPreferences {
     const settings = this.getSettings();
 
     const page = new Adw.PreferencesPage();
+    page.set_size_request(460, -1);
+
+    const cssProvider = new Gtk.CssProvider();
+    cssProvider.load_from_data('preferencespage > scrolledwindow > viewport > clamp { padding: 4px 8px; }', -1);
+    Gtk.StyleContext.add_provider_for_display(
+      window.get_display(),
+      cssProvider,
+      Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+
     const group = new Adw.PreferencesGroup();
     page.add(group);
 
-    // Use Custom Top Icon
+    // Use Custom Top Panel Icon
     const rowUseCustomTopIcon = new Adw.ActionRow({
-      title: "Use Custom Top Icon",
-      subtitle: "Replace the default terminal icon in the top panel",
+      title: "Use Custom Top Panel Icon",
     });
+    const helpCustomIcon = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Enable this to replace the default panel icon with a custom one" });
+    rowUseCustomTopIcon.add_prefix(helpCustomIcon);
     group.add(rowUseCustomTopIcon);
 
     const toggleTopIcon = new Gtk.Switch({
@@ -42,11 +54,12 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowUseCustomTopIcon.add_suffix(toggleTopIcon);
     rowUseCustomTopIcon.activatable_widget = toggleTopIcon;
     
-    // Top Bar Icon Name
+    // Top Panel Icon Selection
     const rowTopIconName = new Adw.ActionRow({
-      title: "Top Icon Name",
-      subtitle: "Icon name (e.g., firefox-symbolic) or path to icon file",
+      title: "Top Panel Icon Selection",
     });
+    const helpTopIcon = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Enter an icon name (e.g. firefox-symbolic) or select an icon file (.svg/.png)" });
+    rowTopIconName.add_prefix(helpTopIcon);
     group.add(rowTopIconName);
 
     const entryTopIconName = new Gtk.Entry({
@@ -63,22 +76,75 @@ export default class LauncherPreferences extends ExtensionPreferences {
       Gio.SettingsBindFlags.DEFAULT,
     );
 
-    // Only enable the icon name entry when the toggle is active
-    toggleTopIcon.connect('notify::active', () => {
-      entryTopIconName.set_sensitive(toggleTopIcon.get_active());
+    const btnBrowseIcon = new Gtk.Button({
+      icon_name: "folder-open-symbolic",
+      valign: Gtk.Align.CENTER,
     });
-    
-    // Set initial sensitivity
-    entryTopIconName.set_sensitive(toggleTopIcon.get_active());
+    btnBrowseIcon.connect('clicked', () => {
+      const dialog = new Gtk.FileDialog();
+      const iconFilter = new Gtk.FileFilter();
+      iconFilter.set_name("Icon files (*.svg, *.png)");
+      iconFilter.add_pattern("*.svg");
+      iconFilter.add_pattern("*.png");
+      const filters = new Gio.ListStore({ item_type: Gtk.FileFilter });
+      filters.append(iconFilter);
+      dialog.set_filters(filters);
+      dialog.set_default_filter(iconFilter);
+      dialog.open(window, null, (dialog, result) => {
+        try {
+          const file = dialog.open_finish(result);
+          if (file) {
+            entryTopIconName.set_text(file.get_path());
+          }
+        } catch (e) {
+          // user cancelled
+        }
+      });
+    });
+
+    let currentTopIcon = settings.get_string("top-icon-name") || "gnome-terminal";
+    const topIconPreview = new Gtk.Image({
+      icon_name: currentTopIcon,
+      pixel_size: 24,
+    });
+    const btnTopPreview = new Gtk.Button({
+      icon_name: "view-reveal-symbolic",
+      valign: Gtk.Align.CENTER,
+      has_tooltip: true,
+    });
+    btnTopPreview.connect('query-tooltip', (_w, _x, _y, _kbd, tooltip) => {
+      const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8 });
+      const iconVal = entryTopIconName.get_text().trim();
+      if (iconVal.startsWith('/') || iconVal.endsWith('.svg') || iconVal.endsWith('.png')) {
+        box.append(new Gtk.Image({ file: iconVal, pixel_size: 48 }));
+      } else {
+        box.append(new Gtk.Image({ icon_name: iconVal || "gnome-terminal", pixel_size: 48 }));
+      }
+      box.append(new Gtk.Label({ label: iconVal || "gnome-terminal" }));
+      tooltip.set_custom(box);
+      return true;
+    });
+
+    // Only enable when the toggle is active
+    const updateTopIconSensitivity = () => {
+      const active = toggleTopIcon.get_active();
+      entryTopIconName.set_sensitive(active);
+      btnBrowseIcon.set_sensitive(active);
+      btnTopPreview.set_sensitive(active);
+    };
+    toggleTopIcon.connect('notify::active', updateTopIconSensitivity);
+    updateTopIconSensitivity();
 
     rowTopIconName.add_suffix(entryTopIconName);
-    rowTopIconName.activatable_widget = entryTopIconName;
+    rowTopIconName.add_suffix(btnBrowseIcon);
+    rowTopIconName.add_suffix(btnTopPreview);
 
     // Script Path
     const rowPath = new Adw.ActionRow({
       title: "Scripts Path",
-      subtitle: "Directory with your scripts",
     });
+    const helpPath = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Directory containing your .sh script files" });
+    rowPath.add_prefix(helpPath);
     group.add(rowPath);
 
     const entryPath = new Gtk.Entry({
@@ -114,8 +180,9 @@ export default class LauncherPreferences extends ExtensionPreferences {
     // Default Icon
     const rowIconName = new Adw.ActionRow({
       title: "Default Icon",
-      subtitle: "Icon used for scripts in the menu",
     });
+    const helpDefaultIcon = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Default icon shown next to each script in the menu. Enter an icon name or select a file" });
+    rowIconName.add_prefix(helpDefaultIcon);
     group.add(rowIconName);
 
     const entryIconName = new Gtk.Entry({
@@ -147,31 +214,67 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     btnPreview.connect('query-tooltip', (_w, _x, _y, _kbd, tooltip) => {
       const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8 });
-      box.append(new Gtk.Image({ icon_name: currentIcon, pixel_size: 48 }));
+      if (currentIcon.startsWith('/') || currentIcon.endsWith('.svg') || currentIcon.endsWith('.png')) {
+        box.append(new Gtk.Image({ file: currentIcon, pixel_size: 48 }));
+      } else {
+        box.append(new Gtk.Image({ icon_name: currentIcon, pixel_size: 48 }));
+      }
       box.append(new Gtk.Label({ label: currentIcon }));
       tooltip.set_custom(box);
       return true;
     });
 
+    const btnBrowseDefaultIcon = new Gtk.Button({
+      icon_name: "folder-open-symbolic",
+      valign: Gtk.Align.CENTER,
+    });
+    btnBrowseDefaultIcon.connect('clicked', () => {
+      const dialog = new Gtk.FileDialog();
+      const iconFilter = new Gtk.FileFilter();
+      iconFilter.set_name("Icon files (*.svg, *.png)");
+      iconFilter.add_pattern("*.svg");
+      iconFilter.add_pattern("*.png");
+      const filters = new Gio.ListStore({ item_type: Gtk.FileFilter });
+      filters.append(iconFilter);
+      dialog.set_filters(filters);
+      dialog.set_default_filter(iconFilter);
+      dialog.open(window, null, (dialog, result) => {
+        try {
+          const file = dialog.open_finish(result);
+          if (file) {
+            entryIconName.set_text(file.get_path());
+          }
+        } catch (e) {
+          // user cancelled
+        }
+      });
+    });
+
     entryIconName.connect('changed', () => {
       const name = entryIconName.get_text().trim();
       if (name) {
-        const theme = Gtk.IconTheme.get_for_display(entryIconName.get_display());
-        if (theme.has_icon(name)) {
-          iconPreview.set_from_icon_name(name);
+        if (name.startsWith('/') || name.endsWith('.svg') || name.endsWith('.png')) {
           currentIcon = name;
+        } else {
+          const theme = Gtk.IconTheme.get_for_display(entryIconName.get_display());
+          if (theme.has_icon(name)) {
+            iconPreview.set_from_icon_name(name);
+            currentIcon = name;
+          }
         }
       }
     });
 
     rowIconName.add_suffix(entryIconName);
+    rowIconName.add_suffix(btnBrowseDefaultIcon);
     rowIconName.add_suffix(btnPreview);
 
     // Strip
     const rowStrip = new Adw.ActionRow({
       title: "Show File Extensions",
-      subtitle: "Show file extensions in script list (e.g. Script.sh instead of Script)",
     });
+    const helpStrip = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "When enabled, shows file extensions in the script list (e.g. Script.sh instead of Script)" });
+    rowStrip.add_prefix(helpStrip);
     group.add(rowStrip);
 
     const toggleStrip = new Gtk.Switch({
@@ -198,8 +301,9 @@ export default class LauncherPreferences extends ExtensionPreferences {
     // Export
     const rowExport = new Adw.ActionRow({
       title: "Export Settings",
-      subtitle: "Save settings to a .conf file",
     });
+    const helpExport = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Save all extension settings to a .conf file for backup" });
+    rowExport.add_prefix(helpExport);
     backupGroup.add(rowExport);
 
     const btnExport = new Gtk.Button({
@@ -253,8 +357,9 @@ export default class LauncherPreferences extends ExtensionPreferences {
     // Import
     const rowImport = new Adw.ActionRow({
       title: "Import Settings",
-      subtitle: "Load settings from a .conf file",
     });
+    const helpImport = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Load extension settings from a previously exported .conf file" });
+    rowImport.add_prefix(helpImport);
     backupGroup.add(rowImport);
 
     const btnImport = new Gtk.Button({
@@ -297,7 +402,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowImport.add_suffix(btnImport);
 
     const [curW, curH] = window.get_default_size();
-    window.set_default_size(curW, curH + 100);
+    window.set_default_size(curW + 20, curH - 55);
     window.add(page);
   }
 }
