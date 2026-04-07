@@ -3,6 +3,7 @@ import Adw from "gi://Adw";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk";
+import { getLocale, clearCache } from "./locale.js";
 
 export default class LauncherPreferences extends ExtensionPreferences {
   _sendNotification(title, body) {
@@ -15,6 +16,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
   fillPreferencesWindow(window) {
     const settings = this.getSettings();
+    const extPath = this.path;
+    let t = getLocale(extPath, settings.get_string("language"));
 
     const page = new Adw.PreferencesPage();
 
@@ -41,8 +44,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     // Use Custom Top Panel Icon
     const rowUseCustomTopIcon = new Adw.ActionRow({
-      title: "Use Custom Top Panel Icon",
-      subtitle: "Replace the default terminal icon in the top panel",
+      title: t.use_custom_top_panel_icon,
+      subtitle: t.use_custom_top_panel_icon_desc,
     });
     group.add(rowUseCustomTopIcon);
 
@@ -63,8 +66,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     // Top Panel Icon
     const rowTopIconName = new Adw.ActionRow({
-      title: "Top Panel Icon",
-      subtitle: "Icon name or path to icon file",
+      title: t.top_panel_icon,
+      subtitle: t.icon_name_or_path,
     });
     group.add(rowTopIconName);
 
@@ -142,8 +145,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     // Script Path
     const rowPath = new Adw.ActionRow({
-      title: "Scripts Path",
-      subtitle: "Directory with your scripts",
+      title: t.scripts_path,
+      subtitle: t.scripts_path_desc,
     });
     group.add(rowPath);
 
@@ -182,8 +185,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     // Default Icon
     const rowIconName = new Adw.ActionRow({
-      title: "Default Icon",
-      subtitle: "Icon name or path to icon file",
+      title: t.default_icon,
+      subtitle: t.icon_name_or_path,
     });
     group.add(rowIconName);
 
@@ -271,10 +274,49 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowIconName.add_suffix(btnBrowseDefaultIcon);
     rowIconName.add_suffix(btnPreview);
 
+    // Language
+    const rowLang = new Adw.ActionRow({
+      title: t.language,
+      subtitle: t.language_desc,
+    });
+    group.add(rowLang);
+
+    const langOptions = [
+      ['auto', t.auto],
+      ['en', 'English'],
+      ['tr', 'Türkçe'],
+      ['ru', 'Русский'],
+      ['de', 'Deutsch'],
+      ['it', 'Italiano'],
+      ['ja', '日本語'],
+      ['fr', 'Français'],
+      ['es', 'Español'],
+    ];
+
+    const langModel = new Gtk.StringList();
+    langOptions.forEach(([, label]) => langModel.append(label));
+
+    const langDropdown = new Gtk.DropDown({
+      model: langModel,
+      valign: Gtk.Align.CENTER,
+    });
+
+    const currentLang = settings.get_string("language");
+    const langIdx = langOptions.findIndex(([code]) => code === currentLang);
+    langDropdown.set_selected(langIdx >= 0 ? langIdx : 0);
+
+    langDropdown.connect('notify::selected', () => {
+      const idx = langDropdown.get_selected();
+      const code = langOptions[idx][0];
+      settings.set_string("language", code);
+    });
+
+    rowLang.add_suffix(langDropdown);
+
     // Strip
     const rowStrip = new Adw.ActionRow({
-      title: "Show File Extensions",
-      subtitle: "Show file extensions in script list (e.g. Script.sh)",
+      title: t.show_file_extensions,
+      subtitle: t.show_file_extensions_desc,
     });
     group.add(rowStrip);
 
@@ -295,8 +337,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     // Filter File Extensions - toggle row
     const rowFilterToggle = new Adw.ActionRow({
-      title: "Filter File Extensions",
-      subtitle: "Only show files with specific extensions in the list",
+      title: t.filter_file_extensions,
+      subtitle: t.filter_file_extensions_desc,
     });
     group.add(rowFilterToggle);
 
@@ -309,8 +351,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     // Filter File Extensions - input row
     const rowFileExt = new Adw.ActionRow({
-      title: "Extensions",
-      subtitle: "Comma-separated (e.g. .sh,.py,.js)",
+      title: t.extensions,
+      subtitle: t.extensions_desc,
     });
     group.add(rowFileExt);
 
@@ -340,19 +382,19 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     // Backup & Import group
     const backupGroup = new Adw.PreferencesGroup({
-      title: "Backup & Import",
+      title: t.backup_import,
     });
     page.add(backupGroup);
 
     // Export
     const rowExport = new Adw.ActionRow({
-      title: "Export Settings",
-      subtitle: "Save settings to a .conf file",
+      title: t.export_settings,
+      subtitle: t.export_settings_desc,
     });
     backupGroup.add(rowExport);
 
     const btnExport = new Gtk.Button({
-      label: "Export",
+      label: t.export,
       valign: Gtk.Align.CENTER,
     });
     btnExport.connect('clicked', () => {
@@ -381,7 +423,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
               file = Gio.File.new_for_path(path);
             }
             const data = {};
-            const keys = ['path', 'default-icon', 'strip', 'file-extensions',
+            const keys = ['path', 'default-icon', 'strip', 'file-extensions', 'language',
                            'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
             keys.forEach(key => {
               const variant = settings.get_value(key);
@@ -401,13 +443,13 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     // Import
     const rowImport = new Adw.ActionRow({
-      title: "Import Settings",
-      subtitle: "Load settings from a .conf file",
+      title: t.import_settings,
+      subtitle: t.import_settings_desc,
     });
     backupGroup.add(rowImport);
 
     const btnImport = new Gtk.Button({
-      label: "Import",
+      label: t.import,
       valign: Gtk.Align.CENTER,
     });
     btnImport.connect('clicked', () => {

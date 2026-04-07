@@ -7,6 +7,7 @@ import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import St from "gi://St";
 import Clutter from "gi://Clutter";
+import { getLocale, clearCache } from "./locale.js";
 
 // Default icon for the top panel
 const DEFAULT_ICON = "utilities-terminal-symbolic";
@@ -240,6 +241,9 @@ export default class LauncherExtension extends Extension {
   }
 
   _addIndicator() {
+    const lang = this._settings.get_string("language");
+    const t = getLocale(this.path, lang);
+
     this._indicator = new PanelMenu.Button(0.5, this.metadata.name, false);
     this._indicator.style = 'padding: 0; margin: 0;';
 
@@ -257,7 +261,7 @@ export default class LauncherExtension extends Extension {
     this._searchEntry = new St.Entry({
       style_class: 'popup-menu-item',
       style: 'margin: 0px; padding: 4px 8px; min-width: 215px; border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 4px;',
-      hint_text: 'Search scripts...',
+      hint_text: t.search_scripts || 'Search scripts...',
       track_hover: true,
       can_focus: true,
     });
@@ -291,7 +295,7 @@ export default class LauncherExtension extends Extension {
     Main.uiGroup.add_child(this._contextMenu.actor);
     this._contextMenu.actor.hide();
 
-    this._contextMenu.addAction('Settings', () => {
+    this._contextMenu.addAction(t.settings || 'Settings', () => {
       this.openPreferences();
     }, Gio.icon_new_for_string('preferences-system-symbolic'));
 

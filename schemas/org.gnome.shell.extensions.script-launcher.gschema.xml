@@ -16,6 +16,9 @@
     <key name="custom-icon-map" type="s">
       <default>"{}"</default>
     </key>
+    <key name="language" type="s">
+      <default>"auto"</default>
+    </key>
     <key name="file-extensions" type="s">
       <default>".sh"</default>
     </key>
