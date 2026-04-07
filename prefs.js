@@ -238,7 +238,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
             const json = JSON.stringify(data, null, 2);
             file.replace_contents(new TextEncoder().encode(json), null, false,
               Gio.FileCreateFlags.REPLACE_DESTINATION, null);
-            rowExport.set_subtitle(`Exported to ${path}`);
+            const toast = new Adw.Toast({ title: `Exported to ${path}` });
+            window.add_toast(toast);
           }
         } catch (e) {
           // user cancelled
@@ -275,7 +276,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
           if (file) {
             const [ok, contents] = file.load_contents(null);
             if (!ok) {
-              rowImport.set_subtitle('Failed to read file!');
+              const toastFail = new Adw.Toast({ title: 'Failed to read file!' });
+              window.add_toast(toastFail);
               return;
             }
             const json = new TextDecoder().decode(contents);
@@ -284,7 +286,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
               if (typeof value === 'boolean') settings.set_boolean(key, value);
               else if (typeof value === 'string') settings.set_string(key, value);
             });
-            rowImport.set_subtitle(`Imported from ${file.get_path()}`);
+            const toastImport = new Adw.Toast({ title: `Imported from ${file.get_path()}` });
+            window.add_toast(toastImport);
           }
         } catch (e) {
           // user cancelled
