@@ -144,21 +144,19 @@ jobs:
           VERSION: ${{ needs.meta.outputs.version }}
           PRERELEASE: ${{ needs.meta.outputs.prerelease }}
         run: |
-          UUID="script-launcher@enginyilmaaz"
-          if [[ "$PRERELEASE" == "true" ]]; then
-            ZIP_NAME="${UUID}_${VERSION}.zip"
-          else
-            ZIP_NAME="${UUID}_v${VERSION}.zip"
-          fi
+          ZIP_NAME="script-launcher.zip"
 
           mkdir -p dist
           zip -r "dist/${ZIP_NAME}" \
             extension.js \
             prefs.js \
+            locale.js \
             metadata.json \
             schemas/gschemas.compiled \
             schemas/org.gnome.shell.extensions.script-launcher.gschema.xml \
             icons/ \
+            locales/ \
+            LICENSE \
             -x "*.git*"
 
           echo "Built: dist/${ZIP_NAME}"
