@@ -259,6 +259,7 @@ export default class LauncherExtension extends Extension {
     const icon = new St.Icon({
       gicon: gicon,
       style_class: "system-status-icon",
+      style: 'icon-size: 24px;',
     });
     this._indicator.add_child(icon);
 
@@ -379,6 +380,7 @@ export default class LauncherExtension extends Extension {
       const icon = new St.Icon({
         gicon: this._getIcon(),
         style_class: "system-status-icon",
+        style: 'icon-size: 24px;',
       });
       this._indicator.insert_child_at_index(icon, 0);
     }
