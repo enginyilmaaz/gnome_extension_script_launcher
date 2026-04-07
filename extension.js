@@ -294,6 +294,7 @@ export default class LauncherExtension extends Extension {
       this.openPreferences();
     }, Gio.icon_new_for_string('preferences-system-symbolic'));
 
+
     this._indicator.connect('button-press-event', (actor, event) => {
       if (event.get_button() === Clutter.BUTTON_SECONDARY) {
         if (this._indicator.menu.isOpen)

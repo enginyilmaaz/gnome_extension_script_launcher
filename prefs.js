@@ -18,13 +18,23 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     const page = new Adw.PreferencesPage();
 
-    const cssProvider = new Gtk.CssProvider();
-    cssProvider.load_from_data('preferencespage > scrolledwindow > viewport > clamp { padding: 2px 2px; margin: 0; }', -1);
-    Gtk.StyleContext.add_provider_for_display(
-      window.get_display(),
-      cssProvider,
-      Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
-    );
+    page.connect('realize', () => {
+      const walk = (widget) => {
+        if (widget.constructor.name === 'AdwClamp' || widget.constructor.name === 'Clamp') {
+          widget.set_maximum_size(640);
+          widget.set_tightening_threshold(640);
+          return;
+        }
+        if (widget.get_first_child) {
+          let child = widget.get_first_child();
+          while (child) {
+            walk(child);
+            child = child.get_next_sibling();
+          }
+        }
+      };
+      walk(page);
+    });
 
     const group = new Adw.PreferencesGroup();
     page.add(group);
@@ -164,8 +174,11 @@ export default class LauncherPreferences extends ExtensionPreferences {
       });
     });
 
+    // Invisible spacer to align with rows that have 2 buttons
+    const pathSpacer = new Gtk.Box({ width_request: 34 });
     rowPath.add_suffix(entryPath);
     rowPath.add_suffix(btnBrowse);
+    rowPath.add_suffix(pathSpacer);
 
     // Default Icon
     const rowIconName = new Adw.ActionRow({
@@ -388,7 +401,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowImport.add_suffix(btnImport);
 
     const [curW, curH] = window.get_default_size();
-    window.set_default_size(curW + 60, curH + 45);
+    window.set_default_size(curW, 540);
     window.add(page);
   }
 }
