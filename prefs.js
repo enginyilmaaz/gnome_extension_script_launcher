@@ -1,9 +1,18 @@
 import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
 import Adw from "gi://Adw";
 import Gio from "gi://Gio";
+import GLib from "gi://GLib";
 import Gtk from "gi://Gtk";
 
 export default class LauncherPreferences extends ExtensionPreferences {
+  _sendNotification(title, body) {
+    try {
+      GLib.spawn_command_line_async(`notify-send "${title}" "${body}"`);
+    } catch (e) {
+      // silently fail
+    }
+  }
+
   fillPreferencesWindow(window) {
     const settings = this.getSettings();
 
@@ -254,8 +263,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
             const json = JSON.stringify(data, null, 2);
             file.replace_contents(new TextEncoder().encode(json), null, false,
               Gio.FileCreateFlags.REPLACE_DESTINATION, null);
-            const toast = new Adw.Toast({ title: `Exported to ${path}` });
-            window.add_toast(toast);
+            this._sendNotification('Script Launcher', `Exported to ${path}`);
           }
         } catch (e) {
           // user cancelled
@@ -292,8 +300,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
           if (file) {
             const [ok, contents] = file.load_contents(null);
             if (!ok) {
-              const toastFail = new Adw.Toast({ title: 'Failed to read file!' });
-              window.add_toast(toastFail);
+              this._sendNotification('Script Launcher', 'Failed to read file!');
               return;
             }
             const json = new TextDecoder().decode(contents);
@@ -302,8 +309,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
               if (typeof value === 'boolean') settings.set_boolean(key, value);
               else if (typeof value === 'string') settings.set_string(key, value);
             });
-            const toastImport = new Adw.Toast({ title: `Imported from ${file.get_path()}` });
-            window.add_toast(toastImport);
+            this._sendNotification('Script Launcher', `Imported from ${file.get_path()}`);
           }
         } catch (e) {
           // user cancelled
