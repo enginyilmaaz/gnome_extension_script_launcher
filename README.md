@@ -15,6 +15,10 @@ A GNOME Shell extension that lets you launch `.sh` scripts from the top panel. P
 - **Default Icon** - Set a default icon for all scripts in the menu
 - **File Pickers** - Browse for scripts directory and icon files directly from settings
 - **Icon Preview** - Preview icons with tooltip before applying
+- **Run in Terminal** - Right-click a script to run it in gnome-terminal for interactive scripts
+- **Pin to Top** - Right-click a script to pin it above a separator for quick access
+- **File Extension Filter** - Filter visible scripts by extension (e.g. `.sh,.py,.js`)
+- **Multi-Language** - 8 languages (EN, TR, RU, DE, IT, JA, FR, ES) with auto system detection
 - **Show/Hide Extensions** - Toggle file extension visibility in the script list
 - **Backup & Import** - Export/import settings as `.conf` files with native OS notifications
 - **Right-Click Settings** - Quick access to preferences from the panel icon

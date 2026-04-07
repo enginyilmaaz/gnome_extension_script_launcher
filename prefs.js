@@ -299,6 +299,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
     const langDropdown = new Gtk.DropDown({
       model: langModel,
       valign: Gtk.Align.CENTER,
+      width_request: 200,
     });
 
     const currentLang = settings.get_string("language");
@@ -360,7 +361,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
       placeholder_text: ".sh,.py,.js",
       text: settings.get_string("file-extensions"),
       valign: Gtk.Align.CENTER,
-      hexpand: true,
+      width_request: 200,
     });
 
     settings.bind(

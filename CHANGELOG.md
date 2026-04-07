@@ -2,6 +2,12 @@
 
 ## 2026-04-07
 
+- Add right-click context menu: Run, Run in Terminal, Pin to Top/Unpin
+- Add pinned scripts section with separator at the top of menu
+- Show "No scripts found" / "Directory not found" messages for empty/invalid paths
+- Add multi-language support (EN, TR, RU, DE, IT, JA, FR, ES) with auto system detection
+- Add file extension filter setting with toggle
+- Align all input fields and dropdowns in preferences
 - Fix GNOME review compliance: track timeout sources, simplify script launch, add GPL-2.0 license
 - Align all input fields and file picker buttons in preferences ([`931a139`](https://github.com/enginyilmaaz/gnome_extension_script_launcher/commit/931a139))
 - Update preferences UI with help tooltips, file pickers and icon previews ([`f753141`](https://github.com/enginyilmaaz/gnome_extension_script_launcher/commit/f753141))
