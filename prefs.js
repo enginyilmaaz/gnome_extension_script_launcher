@@ -1,7 +1,6 @@
 import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
 import Adw from "gi://Adw";
 import Gio from "gi://Gio";
-import GLib from "gi://GLib";
 import Gtk from "gi://Gtk";
 
 export default class LauncherPreferences extends ExtensionPreferences {
@@ -66,9 +65,9 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowTopIconName.add_suffix(entryTopIconName);
     rowTopIconName.activatable_widget = entryTopIconName;
 
-    // Enter Path
+    // Script Path
     const rowPath = new Adw.ActionRow({
-      title: "Enter Path",
+      title: "Scripts Path",
       subtitle: "Directory with your scripts",
     });
     group.add(rowPath);
@@ -82,8 +81,26 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     settings.bind("path", entryPath, "text", Gio.SettingsBindFlags.DEFAULT);
 
+    const btnBrowse = new Gtk.Button({
+      icon_name: "folder-open-symbolic",
+      valign: Gtk.Align.CENTER,
+    });
+    btnBrowse.connect('clicked', () => {
+      const dialog = new Gtk.FileDialog();
+      dialog.select_folder(window, null, (dialog, result) => {
+        try {
+          const folder = dialog.select_folder_finish(result);
+          if (folder) {
+            entryPath.set_text(folder.get_path());
+          }
+        } catch (e) {
+          // user cancelled
+        }
+      });
+    });
+
     rowPath.add_suffix(entryPath);
-    rowPath.activatable_widget = entryPath;
+    rowPath.add_suffix(btnBrowse);
 
     // Shebang Icon
     const rowIconType = new Adw.ActionRow({
@@ -159,12 +176,10 @@ export default class LauncherPreferences extends ExtensionPreferences {
     });
     page.add(backupGroup);
 
-    const confPath = GLib.build_filenamev([GLib.get_home_dir(), `${this.metadata.name}.conf`]);
-
     // Export
     const rowExport = new Adw.ActionRow({
       title: "Export Settings",
-      subtitle: confPath,
+      subtitle: "Save settings to a .conf file",
     });
     backupGroup.add(rowExport);
 
@@ -173,25 +188,53 @@ export default class LauncherPreferences extends ExtensionPreferences {
       valign: Gtk.Align.CENTER,
     });
     btnExport.connect('clicked', () => {
-      const data = {};
-      const keys = ['path', 'shebang-icon', 'default-icon', 'strip',
-                     'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
-      keys.forEach(key => {
-        const variant = settings.get_value(key);
-        data[key] = variant.recursiveUnpack();
+      const now = new Date();
+      const timestamp = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}_${String(now.getMinutes()).padStart(2, '0')}_${String(now.getSeconds()).padStart(2, '0')}`;
+      const defaultName = `${this.metadata.name.replace(/\s+/g, '_').toLowerCase()}_${timestamp}.conf`;
+
+      const dialog = new Gtk.FileDialog();
+      dialog.set_initial_name(defaultName);
+
+      const confFilter = new Gtk.FileFilter();
+      confFilter.set_name("Config files (*.conf)");
+      confFilter.add_pattern("*.conf");
+      const filters = new Gio.ListStore({ item_type: Gtk.FileFilter });
+      filters.append(confFilter);
+      dialog.set_filters(filters);
+      dialog.set_default_filter(confFilter);
+
+      dialog.save(window, null, (dialog, result) => {
+        try {
+          let file = dialog.save_finish(result);
+          if (file) {
+            let path = file.get_path();
+            if (!path.endsWith('.conf')) {
+              path = `${path}.conf`;
+              file = Gio.File.new_for_path(path);
+            }
+            const data = {};
+            const keys = ['path', 'shebang-icon', 'default-icon', 'strip',
+                           'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
+            keys.forEach(key => {
+              const variant = settings.get_value(key);
+              data[key] = variant.recursiveUnpack();
+            });
+            const json = JSON.stringify(data, null, 2);
+            file.replace_contents(new TextEncoder().encode(json), null, false,
+              Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+            rowExport.set_subtitle(`Exported to ${path}`);
+          }
+        } catch (e) {
+          // user cancelled
+        }
       });
-      const json = JSON.stringify(data, null, 2);
-      const file = Gio.File.new_for_path(confPath);
-      file.replace_contents(new TextEncoder().encode(json), null, false,
-        Gio.FileCreateFlags.REPLACE_DESTINATION, null);
-      rowExport.set_subtitle(`Exported to ${confPath}`);
     });
     rowExport.add_suffix(btnExport);
 
     // Import
     const rowImport = new Adw.ActionRow({
       title: "Import Settings",
-      subtitle: confPath,
+      subtitle: "Load settings from a .conf file",
     });
     backupGroup.add(rowImport);
 
@@ -200,23 +243,37 @@ export default class LauncherPreferences extends ExtensionPreferences {
       valign: Gtk.Align.CENTER,
     });
     btnImport.connect('clicked', () => {
-      const file = Gio.File.new_for_path(confPath);
-      if (!file.query_exists(null)) {
-        rowImport.set_subtitle('File not found!');
-        return;
-      }
-      const [ok, contents] = file.load_contents(null);
-      if (!ok) {
-        rowImport.set_subtitle('Failed to read file!');
-        return;
-      }
-      const json = new TextDecoder().decode(contents);
-      const data = JSON.parse(json);
-      Object.entries(data).forEach(([key, value]) => {
-        if (typeof value === 'boolean') settings.set_boolean(key, value);
-        else if (typeof value === 'string') settings.set_string(key, value);
+      const dialog = new Gtk.FileDialog();
+
+      const confFilter = new Gtk.FileFilter();
+      confFilter.set_name("Config files (*.conf)");
+      confFilter.add_pattern("*.conf");
+      const filters = new Gio.ListStore({ item_type: Gtk.FileFilter });
+      filters.append(confFilter);
+      dialog.set_filters(filters);
+      dialog.set_default_filter(confFilter);
+
+      dialog.open(window, null, (dialog, result) => {
+        try {
+          const file = dialog.open_finish(result);
+          if (file) {
+            const [ok, contents] = file.load_contents(null);
+            if (!ok) {
+              rowImport.set_subtitle('Failed to read file!');
+              return;
+            }
+            const json = new TextDecoder().decode(contents);
+            const data = JSON.parse(json);
+            Object.entries(data).forEach(([key, value]) => {
+              if (typeof value === 'boolean') settings.set_boolean(key, value);
+              else if (typeof value === 'string') settings.set_string(key, value);
+            });
+            rowImport.set_subtitle(`Imported from ${file.get_path()}`);
+          }
+        } catch (e) {
+          // user cancelled
+        }
       });
-      rowImport.set_subtitle(`Imported from ${confPath}`);
     });
     rowImport.add_suffix(btnImport);
 
