@@ -296,7 +296,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
     // Filter File Extensions - toggle row
     const rowFilterToggle = new Adw.ActionRow({
       title: "Filter File Extensions",
-      subtitle: "Only show files with specific extensions",
+      subtitle: "Only show files with specific extensions in the list",
     });
     group.add(rowFilterToggle);
 
