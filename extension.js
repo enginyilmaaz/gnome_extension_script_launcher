@@ -96,7 +96,6 @@ export default class LauncherExtension extends Extension {
       return;
     }
 
-    const shebangIcon = this._settings.get_boolean("shebang-icon");
     const dafaultIcon = this._settings.get_string("default-icon");
     const stripExt = this._settings.get_boolean("strip");
 
@@ -115,10 +114,10 @@ export default class LauncherExtension extends Extension {
         iconName = pngPath.get_path();
       }
 
-      // Use custom icon if found, otherwise use shebang icon or default icon
+      // Use custom icon if found, otherwise use default icon
       const icon = iconName ?
         Gio.icon_new_for_string(iconName) :
-        (shebangIcon ? script.get_icon() : Gio.ThemedIcon.new(dafaultIcon || BULLET));
+        Gio.ThemedIcon.new(dafaultIcon || BULLET);
 
       const displayName = stripExt
         ? scriptName.replace(/\.[^\.]+$/, "")

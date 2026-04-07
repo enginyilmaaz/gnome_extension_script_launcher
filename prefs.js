@@ -111,32 +111,10 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowPath.add_suffix(entryPath);
     rowPath.add_suffix(btnBrowse);
 
-    // Shebang Icon
-    const rowIconType = new Adw.ActionRow({
-      title: "Shebang Icon",
-      subtitle: "Use script shebang to set an icon",
-    });
-    group.add(rowIconType);
-
-    const toggleIconType = new Gtk.Switch({
-      active: settings.get_boolean("shebang-icon"),
-      valign: Gtk.Align.CENTER,
-    });
-
-    settings.bind(
-      "shebang-icon",
-      toggleIconType,
-      "active",
-      Gio.SettingsBindFlags.DEFAULT,
-    );
-
-    rowIconType.add_suffix(toggleIconType);
-    rowIconType.activatable_widget = toggleIconType;
-
     // Default Icon
     const rowIconName = new Adw.ActionRow({
       title: "Default Icon",
-      subtitle: "Used when shebang icon is disabled",
+      subtitle: "Icon used for scripts in the menu",
     });
     group.add(rowIconName);
 
@@ -254,7 +232,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
               file = Gio.File.new_for_path(path);
             }
             const data = {};
-            const keys = ['path', 'shebang-icon', 'default-icon', 'strip',
+            const keys = ['path', 'default-icon', 'strip',
                            'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
             keys.forEach(key => {
               const variant = settings.get_value(key);
