@@ -197,66 +197,63 @@ export default class LauncherExtension extends Extension {
   }
 
   _addScriptMenuItem(info, t) {
-    const item = this._menu.innerMenu.addAction(
-      info.displayName,
+    const item = new PopupMenu.PopupSubMenuMenuItem(info.displayName);
+    // Replace expander arrow with script icon
+    if (item._icon) {
+      item._icon.gicon = info.icon;
+    } else {
+      const icon = new St.Icon({ gicon: info.icon, style_class: 'popup-menu-icon' });
+      item.insert_child_at_index(icon, 1);
+    }
+    this._menu.innerMenu.addMenuItem(item);
+
+    // Left click = run script directly
+    item.connect('captured-event', (actor, event) => {
+      if (event.type() === Clutter.EventType.BUTTON_PRESS &&
+          event.get_button() === Clutter.BUTTON_PRIMARY) {
+        // Only if submenu is closed, run the script
+        if (!item.menu.isOpen) {
+          this._launchScript(info.scriptName);
+          return Clutter.EVENT_STOP;
+        }
+      }
+      return Clutter.EVENT_PROPAGATE;
+    });
+
+    // Submenu items (shown on right-click or arrow click)
+    const isPinned = this._getPinnedScripts().includes(info.scriptName);
+
+    item.menu.addAction(
+      t.run || 'Run',
       () => this._launchScript(info.scriptName),
-      info.icon
+      Gio.ThemedIcon.new('media-playback-start-symbolic')
     );
 
-    // Right-click context menu on script items
-    item.connect('button-press-event', (actor, event) => {
-      if (event.get_button() === Clutter.BUTTON_SECONDARY) {
-        this._showScriptContextMenu(actor, info, t);
+    item.menu.addAction(
+      t.run_in_terminal || 'Run in Terminal',
+      () => this._launchInTerminal(info.scriptName),
+      Gio.ThemedIcon.new('utilities-terminal-symbolic')
+    );
+
+    item.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+    item.menu.addAction(
+      isPinned ? (t.unpin || 'Unpin') : (t.pin_to_top || 'Pin to Top'),
+      () => this._togglePin(info.scriptName),
+      Gio.ThemedIcon.new(isPinned ? 'view-restore-symbolic' : 'view-pin-symbolic')
+    );
+
+    // Open submenu on right-click
+    item.connect('captured-event', (actor, event) => {
+      if (event.type() === Clutter.EventType.BUTTON_PRESS &&
+          event.get_button() === Clutter.BUTTON_SECONDARY) {
+        item.menu.toggle();
         return Clutter.EVENT_STOP;
       }
       return Clutter.EVENT_PROPAGATE;
     });
 
     info.menuItem = item;
-  }
-
-  _showScriptContextMenu(actor, info, t) {
-    // Remove old context menu if exists
-    if (this._scriptContextMenu) {
-      this._scriptContextMenu.destroy();
-      this._scriptContextMenu = null;
-    }
-
-    this._scriptContextMenu = new PopupMenu.PopupMenu(actor, 0.5, St.Side.TOP);
-    Main.uiGroup.add_child(this._scriptContextMenu.actor);
-
-    // Run
-    this._scriptContextMenu.addAction(
-      t.run || 'Run',
-      () => {
-        this._indicator.menu.close();
-        this._launchScript(info.scriptName);
-      },
-      Gio.ThemedIcon.new('media-playback-start-symbolic')
-    );
-
-    // Run in Terminal
-    this._scriptContextMenu.addAction(
-      t.run_in_terminal || 'Run in Terminal',
-      () => {
-        this._indicator.menu.close();
-        this._launchInTerminal(info.scriptName);
-      },
-      Gio.ThemedIcon.new('utilities-terminal-symbolic')
-    );
-
-    // Separator
-    this._scriptContextMenu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-    // Pin/Unpin
-    const isPinned = this._getPinnedScripts().includes(info.scriptName);
-    this._scriptContextMenu.addAction(
-      isPinned ? (t.unpin || 'Unpin') : (t.pin_to_top || 'Pin to Top'),
-      () => this._togglePin(info.scriptName),
-      Gio.ThemedIcon.new(isPinned ? 'view-restore-symbolic' : 'view-pin-symbolic')
-    );
-
-    this._scriptContextMenu.open();
   }
 
   _filterMenu() {
@@ -560,11 +557,6 @@ export default class LauncherExtension extends Extension {
     // Disconnect menu
     if (this._indicator && this._menuId) {
       this._indicator.menu.disconnect(this._menuId);
-    }
-
-    if (this._scriptContextMenu) {
-      this._scriptContextMenu.destroy();
-      this._scriptContextMenu = null;
     }
 
     if (this._contextMenu) {
