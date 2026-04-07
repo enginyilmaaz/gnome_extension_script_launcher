@@ -230,28 +230,48 @@ export default class LauncherExtension extends Extension {
     }
   }
 
-  // Helper function to get the icon based on panel color
+  // Helper function to get the icon based on settings
   _getIcon() {
-    const iconPath = GLib.build_filenamev([this.path, 'icons', 'panel.png']);
-
+    // Default: use bundled panel.png
+    const fallbackPath = GLib.build_filenamev([this.path, 'icons', 'panel.png']);
+    let gicon;
     try {
-      const file = Gio.File.new_for_path(iconPath);
-      if (file.query_exists(null)) {
-        return Gio.icon_new_for_string(iconPath);
+      const fallbackFile = Gio.File.new_for_path(fallbackPath);
+      if (fallbackFile.query_exists(null)) {
+        gicon = Gio.icon_new_for_string(fallbackPath);
+      } else {
+        gicon = new Gio.ThemedIcon({ name: DEFAULT_ICON });
       }
     } catch (e) {
-      // fall through to default
+      gicon = new Gio.ThemedIcon({ name: DEFAULT_ICON });
     }
 
-    return new Gio.ThemedIcon({ name: DEFAULT_ICON });
+    // Override if custom icon is enabled in settings
+    if (this._settings && this._settings.get_boolean("use-custom-top-icon")) {
+      try {
+        const iconName = this._settings.get_string("top-icon-name");
+
+        if (iconName && iconName.trim() !== "") {
+          if (iconName.startsWith('/') || iconName.endsWith('.svg') || iconName.endsWith('.png')) {
+            const iconFile = Gio.File.new_for_path(iconName);
+            if (iconFile.query_exists(null)) {
+              gicon = Gio.icon_new_for_string(iconName);
+            }
+          } else {
+            gicon = new Gio.ThemedIcon({ name: iconName });
+          }
+        }
+      } catch (e) {
+        // fall back to default already set above
+      }
+    }
+
+    return gicon;
   }
 
   _addIndicator() {
     this._indicator = new PanelMenu.Button(0.5, this.metadata.name, false);
-    this._indicator.style_class = '';
-    this._indicator.style = 'padding-left: 0px; padding-right: 0px;';
-    this._indicator.track_hover = false;
-    this._indicator.reactive = true;
+    this._indicator.style = 'padding: 0; margin: 0;';
 
     // Create icon using settings
     let gicon = this._getIcon();
@@ -259,7 +279,7 @@ export default class LauncherExtension extends Extension {
     const icon = new St.Icon({
       gicon: gicon,
       style_class: "system-status-icon",
-      style: 'icon-size: 24px;',
+      style: "padding: 0; margin: 0;",
     });
     this._indicator.add_child(icon);
 
@@ -353,6 +373,15 @@ export default class LauncherExtension extends Extension {
       this._settings.set_string("path", defaultPath);
     }
 
+    // Set up settings change listeners for icon settings
+    this._iconSettingsChangedId1 = this._settings.connect('changed::use-custom-top-icon', () => {
+      this._updateTopIcon();
+    });
+
+    this._iconSettingsChangedId2 = this._settings.connect('changed::top-icon-name', () => {
+      this._updateTopIcon();
+    });
+
     // Set up listener for path changes to update file monitor
     this._pathChangedId = this._settings.connect('changed::path', () => {
       this._setupFileMonitor();
@@ -380,7 +409,6 @@ export default class LauncherExtension extends Extension {
       const icon = new St.Icon({
         gicon: this._getIcon(),
         style_class: "system-status-icon",
-        style: 'icon-size: 24px;',
       });
       this._indicator.insert_child_at_index(icon, 0);
     }
@@ -401,6 +429,14 @@ export default class LauncherExtension extends Extension {
 
     // Disconnect settings listeners
     if (this._settings) {
+      if (this._iconSettingsChangedId1) {
+        this._settings.disconnect(this._iconSettingsChangedId1);
+        this._iconSettingsChangedId1 = null;
+      }
+      if (this._iconSettingsChangedId2) {
+        this._settings.disconnect(this._iconSettingsChangedId2);
+        this._iconSettingsChangedId2 = null;
+      }
       if (this._pathChangedId) {
         this._settings.disconnect(this._pathChangedId);
         this._pathChangedId = null;

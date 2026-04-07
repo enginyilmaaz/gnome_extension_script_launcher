@@ -260,6 +260,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
     });
     rowImport.add_suffix(btnImport);
 
+    const [curW, curH] = window.get_default_size();
+    window.set_default_size(curW, curH + 100);
     window.add(page);
   }
 }
