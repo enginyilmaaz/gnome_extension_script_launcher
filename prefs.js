@@ -145,8 +145,24 @@ export default class LauncherPreferences extends ExtensionPreferences {
       Gio.SettingsBindFlags.DEFAULT,
     );
 
+    const iconPreview = new Gtk.Image({
+      icon_name: settings.get_string("default-icon") || "pan-end-symbolic",
+      pixel_size: 24,
+      valign: Gtk.Align.CENTER,
+    });
+
+    entryIconName.connect('changed', () => {
+      const name = entryIconName.get_text().trim();
+      if (name) {
+        const theme = Gtk.IconTheme.get_for_display(entryIconName.get_display());
+        if (theme.has_icon(name)) {
+          iconPreview.set_from_icon_name(name);
+        }
+      }
+    });
+
     rowIconName.add_suffix(entryIconName);
-    rowIconName.activatable_widget = entryIconName;
+    rowIconName.add_suffix(iconPreview);
 
     // Strip
     const rowStrip = new Adw.ActionRow({
