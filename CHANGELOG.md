@@ -2,6 +2,7 @@
 
 ## 2026-04-07
 
+- Fix GNOME review compliance: track timeout sources, simplify script launch, add GPL-2.0 license
 - Align all input fields and file picker buttons in preferences ([`931a139`](https://github.com/enginyilmaaz/gnome_extension_script_launcher/commit/931a139))
 - Update preferences UI with help tooltips, file pickers and icon previews ([`f753141`](https://github.com/enginyilmaaz/gnome_extension_script_launcher/commit/f753141))
 - Remove shebang icon feature from extension and preferences ([`c41dfc9`](https://github.com/enginyilmaaz/gnome_extension_script_launcher/commit/c41dfc9))

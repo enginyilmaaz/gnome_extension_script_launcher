@@ -188,12 +188,7 @@ export default class LauncherExtension extends Extension {
     const command = [`${this._path}/${script}`];
 
     try {
-      const proc = this._launcher.spawnv(command);
-      proc.communicate_utf8_async(null, null, (proc, res) => {
-        const [, stdout, stderr] = proc.communicate_utf8_finish(res);
-
-
-      });
+      this._launcher.spawnv(command);
     } catch (e) {
       // silently fail
     }
@@ -325,8 +320,12 @@ export default class LauncherExtension extends Extension {
           // Clear search when menu opens
           this._searchEntry.set_text('');
           // Set focus to search entry
-          GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+          if (this._focusTimeout) {
+            GLib.source_remove(this._focusTimeout);
+          }
+          this._focusTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
             this._searchEntry.grab_key_focus();
+            this._focusTimeout = null;
             return GLib.SOURCE_REMOVE;
           });
         }
@@ -385,10 +384,14 @@ export default class LauncherExtension extends Extension {
   }
 
   disable() {
-    // Clean up refresh timeout
+    // Clean up timeouts
     if (this._refreshTimeout) {
       GLib.source_remove(this._refreshTimeout);
       this._refreshTimeout = null;
+    }
+    if (this._focusTimeout) {
+      GLib.source_remove(this._focusTimeout);
+      this._focusTimeout = null;
     }
 
     // Clean up file monitor
