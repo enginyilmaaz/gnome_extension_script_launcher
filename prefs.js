@@ -299,7 +299,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
     const langDropdown = new Gtk.DropDown({
       model: langModel,
       valign: Gtk.Align.CENTER,
-      width_request: 200,
+      width_request: 280,
     });
 
     const currentLang = settings.get_string("language");
@@ -361,7 +361,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
       placeholder_text: ".sh,.py,.js",
       text: settings.get_string("file-extensions"),
       valign: Gtk.Align.CENTER,
-      width_request: 200,
+      width_request: 280,
     });
 
     settings.bind(
@@ -381,22 +381,17 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     rowFileExt.add_suffix(entryFileExt);
 
-    // Backup & Import group
-    const backupGroup = new Adw.PreferencesGroup({
-      title: t.backup_import,
-    });
-    page.add(backupGroup);
-
     // Export
     const rowExport = new Adw.ActionRow({
       title: t.export_settings,
       subtitle: t.export_settings_desc,
     });
-    backupGroup.add(rowExport);
+    group.add(rowExport);
 
     const btnExport = new Gtk.Button({
       label: t.export,
       valign: Gtk.Align.CENTER,
+      width_request: 130,
     });
     btnExport.connect('clicked', () => {
       const now = new Date();
@@ -447,11 +442,12 @@ export default class LauncherPreferences extends ExtensionPreferences {
       title: t.import_settings,
       subtitle: t.import_settings_desc,
     });
-    backupGroup.add(rowImport);
+    group.add(rowImport);
 
     const btnImport = new Gtk.Button({
       label: t.import,
       valign: Gtk.Align.CENTER,
+      width_request: 130,
     });
     btnImport.connect('clicked', () => {
       const dialog = new Gtk.FileDialog();
@@ -489,7 +485,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowImport.add_suffix(btnImport);
 
     const [curW, curH] = window.get_default_size();
-    window.set_default_size(curW, 540);
+    window.set_default_size(curW, 680);
     window.add(page);
   }
 }
