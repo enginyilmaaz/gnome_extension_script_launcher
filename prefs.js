@@ -85,29 +85,6 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowPath.add_suffix(entryPath);
     rowPath.activatable_widget = entryPath;
 
-    // Notify
-    const rowNotify = new Adw.ActionRow({
-      title: "Notify",
-      subtitle:
-        "Show a notification (stdout || stderr || exit code) on script completion",
-    });
-    group.add(rowNotify);
-
-    const toggleNotify = new Gtk.Switch({
-      active: settings.get_boolean("notify"),
-      valign: Gtk.Align.CENTER,
-    });
-
-    settings.bind(
-      "notify",
-      toggleNotify,
-      "active",
-      Gio.SettingsBindFlags.DEFAULT,
-    );
-
-    rowNotify.add_suffix(toggleNotify);
-    rowNotify.activatable_widget = toggleNotify;
-
     // Shebang Icon
     const rowIconType = new Adw.ActionRow({
       title: "Shebang Icon",
@@ -197,7 +174,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
     });
     btnExport.connect('clicked', () => {
       const data = {};
-      const keys = ['path', 'notify', 'shebang-icon', 'default-icon', 'strip',
+      const keys = ['path', 'shebang-icon', 'default-icon', 'strip',
                      'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
       keys.forEach(key => {
         const variant = settings.get_value(key);

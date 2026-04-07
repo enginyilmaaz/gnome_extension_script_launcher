@@ -193,25 +193,10 @@ export default class LauncherExtension extends Extension {
       proc.communicate_utf8_async(null, null, (proc, res) => {
         const [, stdout, stderr] = proc.communicate_utf8_finish(res);
 
-        const notify = this._settings.get_boolean("notify");
-        if (notify) {
-          if (stdout || stderr) {
-            Main.notify(this.metadata.name, `[${script}]: ${stdout || stderr}`);
-          } else {
-            Main.notify(
-              this.metadata.name,
-              `[${script}]: completed with exit code: ${proc.get_exit_status()}`,
-            );
-          }
-        }
-
 
       });
     } catch (e) {
-      Main.notify(
-        this.metadata.name,
-        `[${script}]: ${e.toString().replace("GLib.SpawnError: ", "")}`,
-      );
+      // silently fail
     }
   }
 
