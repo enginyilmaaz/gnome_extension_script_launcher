@@ -148,7 +148,22 @@ export default class LauncherPreferences extends ExtensionPreferences {
     const iconPreview = new Gtk.Image({
       icon_name: settings.get_string("default-icon") || "pan-end-symbolic",
       pixel_size: 24,
+    });
+
+    const btnPreview = new Gtk.Button({
+      icon_name: "view-reveal-symbolic",
       valign: Gtk.Align.CENTER,
+      has_tooltip: true,
+    });
+
+    let currentIcon = settings.get_string("default-icon") || "pan-end-symbolic";
+
+    btnPreview.connect('query-tooltip', (_w, _x, _y, _kbd, tooltip) => {
+      const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8 });
+      box.append(new Gtk.Image({ icon_name: currentIcon, pixel_size: 48 }));
+      box.append(new Gtk.Label({ label: currentIcon }));
+      tooltip.set_custom(box);
+      return true;
     });
 
     entryIconName.connect('changed', () => {
@@ -157,12 +172,13 @@ export default class LauncherPreferences extends ExtensionPreferences {
         const theme = Gtk.IconTheme.get_for_display(entryIconName.get_display());
         if (theme.has_icon(name)) {
           iconPreview.set_from_icon_name(name);
+          currentIcon = name;
         }
       }
     });
 
     rowIconName.add_suffix(entryIconName);
-    rowIconName.add_suffix(iconPreview);
+    rowIconName.add_suffix(btnPreview);
 
     // Strip
     const rowStrip = new Adw.ActionRow({
