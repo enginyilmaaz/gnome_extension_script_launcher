@@ -6,6 +6,7 @@ import * as Config from "resource:///org/gnome/shell/misc/config.js";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import St from "gi://St";
+import Clutter from "gi://Clutter";
 
 // Default icon for the top panel
 const DEFAULT_ICON = "utilities-terminal-symbolic";
@@ -229,40 +230,28 @@ export default class LauncherExtension extends Extension {
     }
   }
 
-  // Helper function to get the icon based on settings
+  // Helper function to get the icon based on panel color
   _getIcon() {
-    // Default to built-in terminal icon
-    let gicon = new Gio.ThemedIcon({ name: DEFAULT_ICON });
+    const iconPath = GLib.build_filenamev([this.path, 'icons', 'panel.png']);
 
-    // Only use custom icon if the settings are loaded and the feature is enabled
-    if (this._settings && this._settings.get_boolean("use-custom-top-icon")) {
-      try {
-        const iconName = this._settings.get_string("top-icon-name");
-
-        if (iconName && iconName.trim() !== "") {
-          // Handle file paths vs icon names
-          if (iconName.startsWith('/') || iconName.endsWith('.svg') || iconName.endsWith('.png')) {
-            // It's a file path
-            const iconFile = Gio.File.new_for_path(iconName);
-            if (iconFile.query_exists(null)) {
-              gicon = Gio.icon_new_for_string(iconName);
-            }
-          } else {
-            // It's an icon name
-            gicon = new Gio.ThemedIcon({ name: iconName });
-          }
-        }
-      } catch (e) {
-        // If anything goes wrong, silently fall back to the default icon
-        // which is already set above
+    try {
+      const file = Gio.File.new_for_path(iconPath);
+      if (file.query_exists(null)) {
+        return Gio.icon_new_for_string(iconPath);
       }
+    } catch (e) {
+      // fall through to default
     }
 
-    return gicon;
+    return new Gio.ThemedIcon({ name: DEFAULT_ICON });
   }
 
   _addIndicator() {
     this._indicator = new PanelMenu.Button(0.5, this.metadata.name, false);
+    this._indicator.style_class = '';
+    this._indicator.style = 'padding-left: 0px; padding-right: 0px;';
+    this._indicator.track_hover = false;
+    this._indicator.reactive = true;
 
     // Create icon using settings
     let gicon = this._getIcon();
@@ -306,6 +295,30 @@ export default class LauncherExtension extends Extension {
     this._indicator.menu.addMenuItem(this._searchMenuItem);
     this._indicator.menu.addMenuItem(this._menu);
 
+    // Right-click context menu with Settings
+    this._contextMenu = new PopupMenu.PopupMenu(this._indicator, 0.5, St.Side.TOP);
+    Main.uiGroup.add_child(this._contextMenu.actor);
+    this._contextMenu.actor.hide();
+
+    this._contextMenu.addAction('Settings', () => {
+      this.openPreferences();
+    }, Gio.icon_new_for_string('preferences-system-symbolic'));
+
+    this._indicator.connect('button-press-event', (actor, event) => {
+      if (event.get_button() === Clutter.BUTTON_SECONDARY) {
+        if (this._indicator.menu.isOpen)
+          this._indicator.menu.close();
+        this._contextMenu.toggle();
+        return Clutter.EVENT_STOP;
+      }
+      // Left click: close context menu if open
+      if (event.get_button() === Clutter.BUTTON_PRIMARY) {
+        if (this._contextMenu.isOpen)
+          this._contextMenu.close();
+      }
+      return Clutter.EVENT_PROPAGATE;
+    });
+
     Main.panel.addToStatusArea(this.metadata.name, this._indicator);
 
     // Connect search functionality
@@ -333,14 +346,11 @@ export default class LauncherExtension extends Extension {
   enable() {
     this._settings = this.getSettings();
 
-    // Set up settings change listeners for icon settings
-    this._iconSettingsChangedId1 = this._settings.connect('changed::use-custom-top-icon', () => {
-      this._updateTopIcon();
-    });
-
-    this._iconSettingsChangedId2 = this._settings.connect('changed::top-icon-name', () => {
-      this._updateTopIcon();
-    });
+    // Set default path to ~/scripts if not configured
+    if (!this._settings.get_string("path")) {
+      const defaultPath = GLib.build_filenamev([GLib.get_home_dir(), 'scripts']);
+      this._settings.set_string("path", defaultPath);
+    }
 
     // Set up listener for path changes to update file monitor
     this._pathChangedId = this._settings.connect('changed::path', () => {
@@ -389,14 +399,6 @@ export default class LauncherExtension extends Extension {
 
     // Disconnect settings listeners
     if (this._settings) {
-      if (this._iconSettingsChangedId1) {
-        this._settings.disconnect(this._iconSettingsChangedId1);
-        this._iconSettingsChangedId1 = null;
-      }
-      if (this._iconSettingsChangedId2) {
-        this._settings.disconnect(this._iconSettingsChangedId2);
-        this._iconSettingsChangedId2 = null;
-      }
       if (this._pathChangedId) {
         this._settings.disconnect(this._pathChangedId);
         this._pathChangedId = null;
@@ -406,6 +408,11 @@ export default class LauncherExtension extends Extension {
     // Disconnect menu
     if (this._indicator && this._menuId) {
       this._indicator.menu.disconnect(this._menuId);
+    }
+
+    if (this._contextMenu) {
+      this._contextMenu.destroy();
+      this._contextMenu = null;
     }
 
     if (this._indicator) {

@@ -193,6 +193,73 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowStrip.add_suffix(toggleStrip);
     rowStrip.activatable_widget = toggleStrip;
 
+    // Backup & Import group
+    const backupGroup = new Adw.PreferencesGroup({
+      title: "Backup & Import",
+    });
+    page.add(backupGroup);
+
+    const confPath = GLib.build_filenamev([GLib.get_home_dir(), `${this.metadata.name}.conf`]);
+
+    // Export
+    const rowExport = new Adw.ActionRow({
+      title: "Export Settings",
+      subtitle: confPath,
+    });
+    backupGroup.add(rowExport);
+
+    const btnExport = new Gtk.Button({
+      label: "Export",
+      valign: Gtk.Align.CENTER,
+    });
+    btnExport.connect('clicked', () => {
+      const data = {};
+      const keys = ['path', 'log', 'notify', 'shebang-icon', 'default-icon', 'strip',
+                     'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
+      keys.forEach(key => {
+        const variant = settings.get_value(key);
+        data[key] = variant.recursiveUnpack();
+      });
+      const json = JSON.stringify(data, null, 2);
+      const file = Gio.File.new_for_path(confPath);
+      file.replace_contents(new TextEncoder().encode(json), null, false,
+        Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+      rowExport.set_subtitle(`Exported to ${confPath}`);
+    });
+    rowExport.add_suffix(btnExport);
+
+    // Import
+    const rowImport = new Adw.ActionRow({
+      title: "Import Settings",
+      subtitle: confPath,
+    });
+    backupGroup.add(rowImport);
+
+    const btnImport = new Gtk.Button({
+      label: "Import",
+      valign: Gtk.Align.CENTER,
+    });
+    btnImport.connect('clicked', () => {
+      const file = Gio.File.new_for_path(confPath);
+      if (!file.query_exists(null)) {
+        rowImport.set_subtitle('File not found!');
+        return;
+      }
+      const [ok, contents] = file.load_contents(null);
+      if (!ok) {
+        rowImport.set_subtitle('Failed to read file!');
+        return;
+      }
+      const json = new TextDecoder().decode(contents);
+      const data = JSON.parse(json);
+      Object.entries(data).forEach(([key, value]) => {
+        if (typeof value === 'boolean') settings.set_boolean(key, value);
+        else if (typeof value === 'string') settings.set_string(key, value);
+      });
+      rowImport.set_subtitle(`Imported from ${confPath}`);
+    });
+    rowImport.add_suffix(btnImport);
+
     window.add(page);
   }
 }
