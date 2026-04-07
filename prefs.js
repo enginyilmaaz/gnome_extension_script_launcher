@@ -2,7 +2,6 @@ import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/
 import Adw from "gi://Adw";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
-import Gdk from "gi://Gdk";
 import Gtk from "gi://Gtk";
 
 export default class LauncherPreferences extends ExtensionPreferences {
@@ -18,10 +17,9 @@ export default class LauncherPreferences extends ExtensionPreferences {
     const settings = this.getSettings();
 
     const page = new Adw.PreferencesPage();
-    page.set_size_request(460, -1);
 
     const cssProvider = new Gtk.CssProvider();
-    cssProvider.load_from_data('preferencespage > scrolledwindow > viewport > clamp { padding: 4px 8px; }', -1);
+    cssProvider.load_from_data('preferencespage > scrolledwindow > viewport > clamp { padding: 2px 2px; margin: 0; }', -1);
     Gtk.StyleContext.add_provider_for_display(
       window.get_display(),
       cssProvider,
@@ -34,9 +32,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
     // Use Custom Top Panel Icon
     const rowUseCustomTopIcon = new Adw.ActionRow({
       title: "Use Custom Top Panel Icon",
+      subtitle: "Replace the default terminal icon in the top panel",
     });
-    const helpCustomIcon = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Enable this to replace the default panel icon with a custom one" });
-    rowUseCustomTopIcon.add_prefix(helpCustomIcon);
     group.add(rowUseCustomTopIcon);
 
     const toggleTopIcon = new Gtk.Switch({
@@ -53,20 +50,19 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     rowUseCustomTopIcon.add_suffix(toggleTopIcon);
     rowUseCustomTopIcon.activatable_widget = toggleTopIcon;
-    
-    // Top Panel Icon Selection
+
+    // Top Panel Icon
     const rowTopIconName = new Adw.ActionRow({
-      title: "Top Panel Icon Selection",
+      title: "Top Panel Icon",
+      subtitle: "Icon name or path to icon file",
     });
-    const helpTopIcon = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Enter an icon name (e.g. firefox-symbolic) or select an icon file (.svg/.png)" });
-    rowTopIconName.add_prefix(helpTopIcon);
     group.add(rowTopIconName);
 
     const entryTopIconName = new Gtk.Entry({
       placeholder_text: "gnome-terminal",
       text: settings.get_string("top-icon-name"),
       valign: Gtk.Align.CENTER,
-      hexpand: true,
+      width_request: 200,
     });
 
     settings.bind(
@@ -102,11 +98,6 @@ export default class LauncherPreferences extends ExtensionPreferences {
       });
     });
 
-    let currentTopIcon = settings.get_string("top-icon-name") || "gnome-terminal";
-    const topIconPreview = new Gtk.Image({
-      icon_name: currentTopIcon,
-      pixel_size: 24,
-    });
     const btnTopPreview = new Gtk.Button({
       icon_name: "view-reveal-symbolic",
       valign: Gtk.Align.CENTER,
@@ -142,16 +133,15 @@ export default class LauncherPreferences extends ExtensionPreferences {
     // Script Path
     const rowPath = new Adw.ActionRow({
       title: "Scripts Path",
+      subtitle: "Directory with your scripts",
     });
-    const helpPath = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Directory containing your .sh script files" });
-    rowPath.add_prefix(helpPath);
     group.add(rowPath);
 
     const entryPath = new Gtk.Entry({
       placeholder_text: "/home/username/myscripts",
       text: settings.get_string("path"),
       valign: Gtk.Align.CENTER,
-      hexpand: true,
+      width_request: 200,
     });
 
     settings.bind("path", entryPath, "text", Gio.SettingsBindFlags.DEFAULT);
@@ -180,16 +170,15 @@ export default class LauncherPreferences extends ExtensionPreferences {
     // Default Icon
     const rowIconName = new Adw.ActionRow({
       title: "Default Icon",
+      subtitle: "Icon name or path to icon file",
     });
-    const helpDefaultIcon = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Default icon shown next to each script in the menu. Enter an icon name or select a file" });
-    rowIconName.add_prefix(helpDefaultIcon);
     group.add(rowIconName);
 
     const entryIconName = new Gtk.Entry({
       placeholder_text: "pan-end-symbolic",
       text: settings.get_string("default-icon"),
       valign: Gtk.Align.CENTER,
-      hexpand: true,
+      width_request: 200,
     });
 
     settings.bind(
@@ -272,9 +261,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
     // Strip
     const rowStrip = new Adw.ActionRow({
       title: "Show File Extensions",
+      subtitle: "Show file extensions in script list (e.g. Script.sh)",
     });
-    const helpStrip = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "When enabled, shows file extensions in the script list (e.g. Script.sh instead of Script)" });
-    rowStrip.add_prefix(helpStrip);
     group.add(rowStrip);
 
     const toggleStrip = new Gtk.Switch({
@@ -301,9 +289,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
     // Export
     const rowExport = new Adw.ActionRow({
       title: "Export Settings",
+      subtitle: "Save settings to a .conf file",
     });
-    const helpExport = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Save all extension settings to a .conf file for backup" });
-    rowExport.add_prefix(helpExport);
     backupGroup.add(rowExport);
 
     const btnExport = new Gtk.Button({
@@ -357,9 +344,8 @@ export default class LauncherPreferences extends ExtensionPreferences {
     // Import
     const rowImport = new Adw.ActionRow({
       title: "Import Settings",
+      subtitle: "Load settings from a .conf file",
     });
-    const helpImport = new Gtk.Image({ icon_name: "dialog-question-symbolic", pixel_size: 16, valign: Gtk.Align.CENTER, cursor: Gdk.Cursor.new_from_name("help", null), tooltip_text: "Load extension settings from a previously exported .conf file" });
-    rowImport.add_prefix(helpImport);
     backupGroup.add(rowImport);
 
     const btnImport = new Gtk.Button({
@@ -402,7 +388,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowImport.add_suffix(btnImport);
 
     const [curW, curH] = window.get_default_size();
-    window.set_default_size(curW + 20, curH - 55);
+    window.set_default_size(curW + 60, curH + 45);
     window.add(page);
   }
 }
