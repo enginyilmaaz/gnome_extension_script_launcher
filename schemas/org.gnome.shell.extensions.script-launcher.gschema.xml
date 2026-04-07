@@ -16,6 +16,9 @@
     <key name="custom-icon-map" type="s">
       <default>"{}"</default>
     </key>
+    <key name="pinned-scripts" type="s">
+      <default>"[]"</default>
+    </key>
     <key name="language" type="s">
       <default>"auto"</default>
     </key>

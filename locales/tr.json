@@ -23,5 +23,12 @@
   "import": "İçe Aktar",
   "search_scripts": "Betik ara...",
   "settings": "Ayarlar",
-  "auto": "Otomatik (Sistem Dili)"
+  "auto": "Otomatik (Sistem Dili)",
+  "run": "Çalıştır",
+  "run_in_terminal": "Terminalde Çalıştır",
+  "pin_to_top": "Başa Sabitle",
+  "unpin": "Sabitlemeyi Kaldır",
+  "no_scripts_found": "Betik bulunamadı",
+  "directory_not_found": "Dizin bulunamadı",
+  "pinned": "Sabitlenmiş"
 }

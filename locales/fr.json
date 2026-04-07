@@ -23,5 +23,12 @@
   "import": "Importer",
   "search_scripts": "Rechercher des scripts...",
   "settings": "Paramètres",
-  "auto": "Automatique (langue du système)"
+  "auto": "Automatique (langue du système)",
+  "run": "Exécuter",
+  "run_in_terminal": "Exécuter dans le terminal",
+  "pin_to_top": "Épingler en haut",
+  "unpin": "Désépingler",
+  "no_scripts_found": "Aucun script trouvé",
+  "directory_not_found": "Répertoire introuvable",
+  "pinned": "Épinglés"
 }

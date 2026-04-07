@@ -88,23 +88,72 @@ export default class LauncherExtension extends Extension {
     }
   }
 
+  _getPinnedScripts() {
+    try {
+      return JSON.parse(this._settings.get_string("pinned-scripts"));
+    } catch (e) {
+      return [];
+    }
+  }
+
+  _setPinnedScripts(pinned) {
+    this._settings.set_string("pinned-scripts", JSON.stringify(pinned));
+  }
+
+  _togglePin(scriptName) {
+    const pinned = this._getPinnedScripts();
+    const idx = pinned.indexOf(scriptName);
+    if (idx >= 0) {
+      pinned.splice(idx, 1);
+    } else {
+      pinned.push(scriptName);
+    }
+    this._setPinnedScripts(pinned);
+    this._fillMenu();
+  }
+
   _fillMenu() {
     this._menu.innerMenu.removeAll();
     this._allScripts = [];
+
+    const lang = this._settings.get_string("language");
+    const t = getLocale(this.path, lang);
 
     this._path = this._settings.get_string("path");
     if (!this._path) {
       return;
     }
 
+    // Check if directory exists
+    const directory = Gio.File.new_for_path(this._path);
+    if (!directory.query_exists(null)) {
+      this._menu.innerMenu.addAction(
+        t.directory_not_found || 'Directory not found',
+        () => {},
+        Gio.ThemedIcon.new('dialog-warning-symbolic')
+      );
+      return;
+    }
+
     const dafaultIcon = this._settings.get_string("default-icon");
     const stripExt = this._settings.get_boolean("strip");
+    const pinned = this._getPinnedScripts();
 
-    this._getScripts(this._path).forEach((script) => {
+    const scripts = this._getScripts(this._path);
+    if (!scripts || scripts.length === 0) {
+      this._menu.innerMenu.addAction(
+        t.no_scripts_found || 'No scripts found',
+        () => {},
+        Gio.ThemedIcon.new('dialog-information-symbolic')
+      );
+      return;
+    }
+
+    // Build script info list
+    const allScriptInfos = scripts.map((script) => {
       const scriptName = script.get_name();
       const baseName = scriptName.replace(/\.[^.]+$/, "");
 
-      // Check for matching icon files (.svg or .png)
       let iconName = null;
       const svgPath = Gio.File.new_for_path(`${this._path}/${baseName}.svg`);
       const pngPath = Gio.File.new_for_path(`${this._path}/${baseName}.png`);
@@ -115,7 +164,6 @@ export default class LauncherExtension extends Extension {
         iconName = pngPath.get_path();
       }
 
-      // Use custom icon if found, otherwise use default icon
       const icon = iconName ?
         Gio.icon_new_for_string(iconName) :
         Gio.ThemedIcon.new(dafaultIcon || BULLET);
@@ -124,23 +172,91 @@ export default class LauncherExtension extends Extension {
         ? scriptName.replace(/\.[^\.]+$/, "")
         : scriptName;
 
-      // Store script info for filtering
-      const scriptInfo = {
-        scriptName: scriptName,
-        displayName: displayName,
-        icon: icon,
-        menuItem: null
-      };
-
-      // Create menu item
-      scriptInfo.menuItem = this._menu.innerMenu.addAction(
-        displayName,
-        () => this._launchScript(scriptName),
-        icon
-      );
-
-      this._allScripts.push(scriptInfo);
+      return { scriptName, displayName, icon, isPinned: pinned.includes(scriptName) };
     });
+
+    // Pinned scripts first
+    const pinnedScripts = allScriptInfos.filter(s => s.isPinned);
+    const unpinnedScripts = allScriptInfos.filter(s => !s.isPinned);
+
+    if (pinnedScripts.length > 0) {
+      // Pinned header
+      const pinnedLabel = new PopupMenu.PopupMenuItem(t.pinned || 'Pinned', { reactive: false });
+      pinnedLabel.label.style = 'font-weight: bold; font-size: 11px; color: rgba(255,255,255,0.5);';
+      this._menu.innerMenu.addMenuItem(pinnedLabel);
+
+      pinnedScripts.forEach(info => this._addScriptMenuItem(info, t));
+
+      // Separator
+      this._menu.innerMenu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+    }
+
+    unpinnedScripts.forEach(info => this._addScriptMenuItem(info, t));
+
+    this._allScripts = allScriptInfos;
+  }
+
+  _addScriptMenuItem(info, t) {
+    const item = this._menu.innerMenu.addAction(
+      info.displayName,
+      () => this._launchScript(info.scriptName),
+      info.icon
+    );
+
+    // Right-click context menu on script items
+    item.connect('button-press-event', (actor, event) => {
+      if (event.get_button() === Clutter.BUTTON_SECONDARY) {
+        this._showScriptContextMenu(actor, info, t);
+        return Clutter.EVENT_STOP;
+      }
+      return Clutter.EVENT_PROPAGATE;
+    });
+
+    info.menuItem = item;
+  }
+
+  _showScriptContextMenu(actor, info, t) {
+    // Remove old context menu if exists
+    if (this._scriptContextMenu) {
+      this._scriptContextMenu.destroy();
+      this._scriptContextMenu = null;
+    }
+
+    this._scriptContextMenu = new PopupMenu.PopupMenu(actor, 0.5, St.Side.TOP);
+    Main.uiGroup.add_child(this._scriptContextMenu.actor);
+
+    // Run
+    this._scriptContextMenu.addAction(
+      t.run || 'Run',
+      () => {
+        this._indicator.menu.close();
+        this._launchScript(info.scriptName);
+      },
+      Gio.ThemedIcon.new('media-playback-start-symbolic')
+    );
+
+    // Run in Terminal
+    this._scriptContextMenu.addAction(
+      t.run_in_terminal || 'Run in Terminal',
+      () => {
+        this._indicator.menu.close();
+        this._launchInTerminal(info.scriptName);
+      },
+      Gio.ThemedIcon.new('utilities-terminal-symbolic')
+    );
+
+    // Separator
+    this._scriptContextMenu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+    // Pin/Unpin
+    const isPinned = this._getPinnedScripts().includes(info.scriptName);
+    this._scriptContextMenu.addAction(
+      isPinned ? (t.unpin || 'Unpin') : (t.pin_to_top || 'Pin to Top'),
+      () => this._togglePin(info.scriptName),
+      Gio.ThemedIcon.new(isPinned ? 'view-restore-symbolic' : 'view-pin-symbolic')
+    );
+
+    this._scriptContextMenu.open();
   }
 
   _filterMenu() {
@@ -198,6 +314,21 @@ export default class LauncherExtension extends Extension {
       this._launcher.spawnv(command);
     } catch (e) {
       // silently fail
+    }
+  }
+
+  _launchInTerminal(script) {
+    this._indicator.menu.toggle();
+    const scriptPath = `${this._path}/${script}`;
+
+    try {
+      this._launcher.spawnv(['gnome-terminal', '--', scriptPath]);
+    } catch (e) {
+      try {
+        this._launcher.spawnv(['x-terminal-emulator', '-e', scriptPath]);
+      } catch (e2) {
+        // silently fail
+      }
     }
   }
 
@@ -429,6 +560,11 @@ export default class LauncherExtension extends Extension {
     // Disconnect menu
     if (this._indicator && this._menuId) {
       this._indicator.menu.disconnect(this._menuId);
+    }
+
+    if (this._scriptContextMenu) {
+      this._scriptContextMenu.destroy();
+      this._scriptContextMenu = null;
     }
 
     if (this._contextMenu) {

@@ -23,5 +23,12 @@
   "import": "インポート",
   "search_scripts": "スクリプトを検索...",
   "settings": "設定",
-  "auto": "自動（システム言語）"
+  "auto": "自動（システム言語）",
+  "run": "実行",
+  "run_in_terminal": "ターミナルで実行",
+  "pin_to_top": "上部に固定",
+  "unpin": "固定解除",
+  "no_scripts_found": "スクリプトが見つかりません",
+  "directory_not_found": "ディレクトリが見つかりません",
+  "pinned": "固定済み"
 }
