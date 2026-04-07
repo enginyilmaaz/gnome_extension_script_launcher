@@ -4,10 +4,7 @@
     <key name="path" type="s">
       <default>""</default>
     </key>
-    <key name="log" type="b">
-      <default>false</default>
-    </key>
-    <key name="notify" type="b">
+<key name="notify" type="b">
       <default>true</default>
     </key>
     <key name="shebang-icon" type="b">

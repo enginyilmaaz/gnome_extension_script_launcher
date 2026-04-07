@@ -85,23 +85,6 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowPath.add_suffix(entryPath);
     rowPath.activatable_widget = entryPath;
 
-    // Log
-    const rowLog = new Adw.ActionRow({
-      title: "Log",
-      subtitle: `${GLib.get_home_dir()}/.${this.metadata.name}.log`,
-    });
-    group.add(rowLog);
-
-    const toggleLog = new Gtk.Switch({
-      active: settings.get_boolean("log"),
-      valign: Gtk.Align.CENTER,
-    });
-
-    settings.bind("log", toggleLog, "active", Gio.SettingsBindFlags.DEFAULT);
-
-    rowLog.add_suffix(toggleLog);
-    rowLog.activatable_widget = toggleLog;
-
     // Notify
     const rowNotify = new Adw.ActionRow({
       title: "Notify",
@@ -173,13 +156,13 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     // Strip
     const rowStrip = new Adw.ActionRow({
-      title: "Strip",
-      subtitle: "Hide file extensions",
+      title: "Show File Extensions",
+      subtitle: "Show file extensions in script list (e.g. Script.sh instead of Script)",
     });
     group.add(rowStrip);
 
     const toggleStrip = new Gtk.Switch({
-      active: settings.get_boolean("strip"),
+      active: !settings.get_boolean("strip"),
       valign: Gtk.Align.CENTER,
     });
 
@@ -187,7 +170,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
       "strip",
       toggleStrip,
       "active",
-      Gio.SettingsBindFlags.DEFAULT,
+      Gio.SettingsBindFlags.INVERT_BOOLEAN,
     );
 
     rowStrip.add_suffix(toggleStrip);
@@ -214,7 +197,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
     });
     btnExport.connect('clicked', () => {
       const data = {};
-      const keys = ['path', 'log', 'notify', 'shebang-icon', 'default-icon', 'strip',
+      const keys = ['path', 'notify', 'shebang-icon', 'default-icon', 'strip',
                      'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
       keys.forEach(key => {
         const variant = settings.get_value(key);

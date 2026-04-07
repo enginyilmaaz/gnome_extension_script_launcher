@@ -47,18 +47,6 @@ export default class LauncherExtension extends Extension {
     this._allScripts = [];
   }
 
-  _appendLog(script, stdout, stderr) {
-    const logName = `${GLib.get_home_dir()}/.${this.metadata.name}.log`;
-    const logFile = Gio.File.new_for_path(logName);
-    const encoder = new TextEncoder();
-    const date = new Date();
-
-    const outputStream = logFile.append_to(Gio.FileCreateFlags.NONE, null);
-    outputStream.write(encoder.encode(`\n[${script}]: ${date}\n`), null);
-    outputStream.write(encoder.encode(`STDOUT:\n${stdout}`), null);
-    outputStream.write(encoder.encode(`STDERR:\n${stderr}`), null);
-    outputStream.close(null);
-  }
 
   _setupFileMonitor() {
     // Clean up existing monitor
@@ -217,10 +205,7 @@ export default class LauncherExtension extends Extension {
           }
         }
 
-        const logging = this._settings.get_boolean("log");
-        if (logging) {
-          this._appendLog(script, stdout, stderr);
-        }
+
       });
     } catch (e) {
       Main.notify(
