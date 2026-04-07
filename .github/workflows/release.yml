@@ -1,0 +1,220 @@
+name: Release Extension
+
+on:
+  push:
+    branches:
+      - main
+      - production
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "SemVer tag (example: v1.2.3)"
+        required: false
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  meta:
+    name: Resolve Release Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+      latest: ${{ steps.meta.outputs.latest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          derive_next_stable_version() {
+            git fetch --tags --force
+            local latest_tag latest_version major minor patch candidate
+            latest_tag="$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)"
+            if [[ -n "$latest_tag" ]]; then
+              latest_version="${latest_tag#v}"
+              IFS='.' read -r major minor patch <<< "$latest_version"
+              patch=$((patch + 1))
+            else
+              major=1; minor=0; patch=0
+            fi
+            candidate="${major}.${minor}.${patch}"
+            while version_exists "$candidate"; do
+              patch=$((patch + 1))
+              candidate="${major}.${minor}.${patch}"
+            done
+            echo "$candidate"
+          }
+
+          version_exists() {
+            local version="$1" tag="v${version}"
+            if git ls-remote --tags origin "refs/tags/${tag}" | grep -q .; then return 0; fi
+            if gh release view "$tag" >/dev/null 2>&1; then return 0; fi
+            return 1
+          }
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && -n "$INPUT_TAG" ]]; then
+            TAG="$INPUT_TAG"; VERSION="${TAG#v}"
+            if [[ "$VERSION" == *-* ]]; then PRERELEASE="true"; LATEST="false"; else PRERELEASE="false"; LATEST="true"; fi
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="$REF_NAME"; VERSION="${TAG#v}"
+            if [[ "$VERSION" == *-* ]]; then PRERELEASE="true"; LATEST="false"; else PRERELEASE="false"; LATEST="true"; fi
+          else
+            if [[ "$REF_NAME" == "production" ]]; then
+              VERSION="$(derive_next_stable_version)"
+              TAG="v${VERSION}"
+              PRERELEASE="false"
+              LATEST="true"
+            elif [[ "$REF_NAME" == "main" ]]; then
+              SHORT_SHA="${COMMIT_SHA:0:6}"
+              VERSION="0.0.0-${SHORT_SHA}"
+              TAG="v${VERSION}"
+              PRERELEASE="true"
+              LATEST="false"
+            else
+              echo "Unsupported branch: ${REF_NAME}"; exit 1
+            fi
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build Extension ZIP
+    needs: meta
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update metadata version
+        shell: bash
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+          PRERELEASE: ${{ needs.meta.outputs.prerelease }}
+        run: |
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d- -f1 | cut -d. -f3)
+          INT_VERSION=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
+
+          python3 -c "
+          import json, sys
+          version = int(sys.argv[1])
+          version_name = sys.argv[2]
+          with open('metadata.json', 'r') as f:
+              data = json.load(f)
+          data['version'] = version
+          data['version-name'] = version_name
+          with open('metadata.json', 'w') as f:
+              json.dump(data, f, indent=2)
+              f.write('\n')
+          " "$INT_VERSION" "$VERSION"
+
+          echo "Updated metadata.json: version=$INT_VERSION, version-name=$VERSION"
+          cat metadata.json
+
+      - name: Compile schemas
+        run: glib-compile-schemas schemas/
+
+      - name: Build extension ZIP
+        shell: bash
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+          PRERELEASE: ${{ needs.meta.outputs.prerelease }}
+        run: |
+          UUID="script-launcher@enginyilmaaz"
+          if [[ "$PRERELEASE" == "true" ]]; then
+            ZIP_NAME="${UUID}_${VERSION}.zip"
+          else
+            ZIP_NAME="${UUID}_v${VERSION}.zip"
+          fi
+
+          mkdir -p dist
+          zip -r "dist/${ZIP_NAME}" \
+            extension.js \
+            prefs.js \
+            metadata.json \
+            schemas/gschemas.compiled \
+            schemas/org.gnome.shell.extensions.script-launcher.gschema.xml \
+            icons/ \
+            -x "*.git*"
+
+          echo "Built: dist/${ZIP_NAME}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    needs:
+      - meta
+      - build
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.meta.outputs.tag }}
+          REPO: ${{ github.repository }}
+          PRERELEASE: ${{ needs.meta.outputs.prerelease }}
+          IS_LATEST: ${{ needs.meta.outputs.latest }}
+        run: |
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            ARGS=(--title "$TAG" --notes "Automated release for $TAG")
+            if [[ "$PRERELEASE" == "true" ]]; then ARGS+=(--prerelease); fi
+            if [[ "$IS_LATEST" == "true" ]]; then ARGS+=(--latest); fi
+            gh release create "$TAG" --repo "$REPO" "${ARGS[@]}"
+          fi
+
+      - name: Delete old assets from release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.meta.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          EXISTING="$(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name' 2>/dev/null || true)"
+          for ASSET in $EXISTING; do
+            echo "Deleting old asset: $ASSET"
+            gh release delete-asset "$TAG" "$ASSET" --repo "$REPO" --yes 2>/dev/null || true
+          done
+
+      - name: Upload assets to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.meta.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          mapfile -t FILES < <(find dist -type f)
+          if [[ ${#FILES[@]} -eq 0 ]]; then echo "No artifacts"; exit 1; fi
+          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "$REPO"
