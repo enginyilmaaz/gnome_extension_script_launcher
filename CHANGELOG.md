@@ -2,6 +2,8 @@
 
 ## 2026-04-07
 
+- Detach script right-click actions into a separate popup menu instead of rendering them inside the list
+- Add configurable keyboard shortcut support for toggling the launcher menu
 - Add right-click context menu: Run, Run in Terminal, Pin to Top/Unpin
 - Add pinned scripts section with separator at the top of menu
 - Show "No scripts found" / "Directory not found" messages for empty/invalid paths

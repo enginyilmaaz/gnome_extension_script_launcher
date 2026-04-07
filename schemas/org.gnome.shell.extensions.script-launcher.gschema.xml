@@ -31,5 +31,8 @@
     <key name="top-icon-name" type="s">
       <default>"gnome-terminal"</default>
     </key>
+    <key name="toggle-menu" type="as">
+      <default>['Print','&lt;Control&gt;odiaeresis']</default>
+    </key>
   </schema>
 </schemalist>

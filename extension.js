@@ -1,5 +1,6 @@
 import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import * as BoxPointer from "resource:///org/gnome/shell/ui/boxpointer.js";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 import * as Config from "resource:///org/gnome/shell/misc/config.js";
@@ -7,6 +8,8 @@ import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import St from "gi://St";
 import Clutter from "gi://Clutter";
+import Shell from "gi://Shell";
+import Meta from "gi://Meta";
 import { getLocale, clearCache } from "./locale.js";
 
 // Default icon for the top panel
@@ -46,6 +49,10 @@ export default class LauncherExtension extends Extension {
     this._searchEntry = null;
     this._searchMenuItem = null;
     this._allScripts = [];
+    this._scriptContextMenu = null;
+    this._pendingContextInfo = null;
+    this._scriptContextMenuManager = null;
+    this._scriptContextSourceActor = null;
   }
 
 
@@ -113,6 +120,7 @@ export default class LauncherExtension extends Extension {
   }
 
   _fillMenu() {
+    this._destroyScriptContextMenu();
     this._menu.innerMenu.removeAll();
     this._allScripts = [];
 
@@ -181,8 +189,7 @@ export default class LauncherExtension extends Extension {
 
     if (pinnedScripts.length > 0) {
       // Pinned header
-      const pinnedLabel = new PopupMenu.PopupMenuItem(t.pinned || 'Pinned', { reactive: false });
-      pinnedLabel.label.style = 'font-weight: bold; font-size: 11px; color: rgba(255,255,255,0.5);';
+      const pinnedLabel = new PopupMenu.PopupSeparatorMenuItem(t.pinned || 'Pinned');
       this._menu.innerMenu.addMenuItem(pinnedLabel);
 
       pinnedScripts.forEach(info => this._addScriptMenuItem(info, t));
@@ -197,57 +204,17 @@ export default class LauncherExtension extends Extension {
   }
 
   _addScriptMenuItem(info, t) {
-    const item = new PopupMenu.PopupSubMenuMenuItem(info.displayName);
-    // Replace expander arrow with script icon
-    if (item._icon) {
-      item._icon.gicon = info.icon;
-    } else {
-      const icon = new St.Icon({ gicon: info.icon, style_class: 'popup-menu-icon' });
-      item.insert_child_at_index(icon, 1);
-    }
+    const item = new PopupMenu.PopupImageMenuItem(info.displayName, info.icon);
     this._menu.innerMenu.addMenuItem(item);
 
-    // Left click = run script directly
-    item.connect('captured-event', (actor, event) => {
-      if (event.type() === Clutter.EventType.BUTTON_PRESS &&
-          event.get_button() === Clutter.BUTTON_PRIMARY) {
-        // Only if submenu is closed, run the script
-        if (!item.menu.isOpen) {
-          this._launchScript(info.scriptName);
-          return Clutter.EVENT_STOP;
-        }
-      }
-      return Clutter.EVENT_PROPAGATE;
+    item.connect('activate', () => {
+      this._launchScript(info.scriptName);
     });
 
-    // Submenu items (shown on right-click or arrow click)
-    const isPinned = this._getPinnedScripts().includes(info.scriptName);
-
-    item.menu.addAction(
-      t.run || 'Run',
-      () => this._launchScript(info.scriptName),
-      Gio.ThemedIcon.new('media-playback-start-symbolic')
-    );
-
-    item.menu.addAction(
-      t.run_in_terminal || 'Run in Terminal',
-      () => this._launchInTerminal(info.scriptName),
-      Gio.ThemedIcon.new('utilities-terminal-symbolic')
-    );
-
-    item.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-    item.menu.addAction(
-      isPinned ? (t.unpin || 'Unpin') : (t.pin_to_top || 'Pin to Top'),
-      () => this._togglePin(info.scriptName),
-      Gio.ThemedIcon.new(isPinned ? 'view-restore-symbolic' : 'view-pin-symbolic')
-    );
-
-    // Open submenu on right-click
     item.connect('captured-event', (actor, event) => {
       if (event.type() === Clutter.EventType.BUTTON_PRESS &&
           event.get_button() === Clutter.BUTTON_SECONDARY) {
-        item.menu.toggle();
+        this._showScriptContextMenu(info, t);
         return Clutter.EVENT_STOP;
       }
       return Clutter.EVENT_PROPAGATE;
@@ -256,7 +223,86 @@ export default class LauncherExtension extends Extension {
     info.menuItem = item;
   }
 
+  _showScriptContextMenu(info, t) {
+    if (this._pendingContextInfo === info.scriptName &&
+        this._scriptContextMenu?.isOpen) {
+      this._destroyScriptContextMenu();
+      return;
+    }
+    const itemActor = info.menuItem?.actor;
+    if (!itemActor || !this._scriptContextSourceActor || !this._scriptContextMenuManager) {
+      return;
+    }
+
+    const [x, y] = itemActor.get_transformed_position();
+    const [width, height] = itemActor.get_transformed_size();
+
+    this._destroyScriptContextMenu();
+
+    this._scriptContextSourceActor.set_position(
+      Math.round(x),
+      Math.round(y)
+    );
+    this._scriptContextSourceActor.set_size(
+      Math.max(1, Math.round(width)),
+      Math.max(1, Math.round(height))
+    );
+    this._scriptContextSourceActor.show();
+
+    const menu = new PopupMenu.PopupMenu(
+      this._scriptContextSourceActor,
+      0.5,
+      St.Side.LEFT
+    );
+    menu.blockSourceEvents = true;
+    menu.actor.hide();
+    Main.uiGroup.add_child(menu.actor);
+
+    menu.connect('open-state-changed', (popup, open) => {
+      if (!open && this._scriptContextMenu === popup) {
+        this._destroyScriptContextMenu();
+      }
+    });
+
+    const isPinned = this._getPinnedScripts().includes(info.scriptName);
+    menu.addAction(
+      t.run || 'Run',
+      () => {
+        this._destroyScriptContextMenu();
+        this._launchScript(info.scriptName);
+      },
+      Gio.ThemedIcon.new('media-playback-start-symbolic')
+    );
+
+    menu.addAction(
+      t.run_in_terminal || 'Run in Terminal',
+      () => {
+        this._destroyScriptContextMenu();
+        this._launchInTerminal(info.scriptName);
+      },
+      Gio.ThemedIcon.new('utilities-terminal-symbolic')
+    );
+
+    menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+    menu.addAction(
+      isPinned ? (t.unpin || 'Unpin') : (t.pin_to_top || 'Pin to Top'),
+      () => {
+        this._destroyScriptContextMenu();
+        this._togglePin(info.scriptName);
+      },
+      Gio.ThemedIcon.new(isPinned ? 'view-restore-symbolic' : 'view-pin-symbolic')
+    );
+
+    this._scriptContextMenu = menu;
+    this._pendingContextInfo = info.scriptName;
+    this._scriptContextMenuManager.addMenu(menu);
+    menu.open(BoxPointer.PopupAnimation.FULL);
+    this._scriptContextMenuManager.ignoreRelease();
+  }
+
   _filterMenu() {
+    this._destroyScriptContextMenu();
     const searchText = this._searchEntry.get_text().toLowerCase();
 
     this._allScripts.forEach((scriptInfo) => {
@@ -304,7 +350,9 @@ export default class LauncherExtension extends Extension {
   }
 
   _launchScript(script) {
-    this._indicator.menu.toggle();
+    if (this._indicator?.menu?.isOpen) {
+      this._indicator.menu.close();
+    }
     const command = [`${this._path}/${script}`];
 
     try {
@@ -315,7 +363,9 @@ export default class LauncherExtension extends Extension {
   }
 
   _launchInTerminal(script) {
-    this._indicator.menu.toggle();
+    if (this._indicator?.menu?.isOpen) {
+      this._indicator.menu.close();
+    }
     const scriptPath = `${this._path}/${script}`;
 
     try {
@@ -327,6 +377,17 @@ export default class LauncherExtension extends Extension {
         // silently fail
       }
     }
+  }
+
+  _destroyScriptContextMenu() {
+    if (this._scriptContextMenu) {
+      this._scriptContextMenu.destroy();
+      this._scriptContextMenu = null;
+    }
+    if (this._scriptContextSourceActor) {
+      this._scriptContextSourceActor.hide();
+    }
+    this._pendingContextInfo = null;
   }
 
   // Helper function to get the icon based on settings
@@ -432,6 +493,7 @@ export default class LauncherExtension extends Extension {
       if (event.get_button() === Clutter.BUTTON_SECONDARY) {
         if (this._indicator.menu.isOpen)
           this._indicator.menu.close();
+        this._destroyScriptContextMenu();
         this._contextMenu.toggle();
         return Clutter.EVENT_STOP;
       }
@@ -445,6 +507,21 @@ export default class LauncherExtension extends Extension {
 
     Main.panel.addToStatusArea(this.metadata.name, this._indicator);
 
+    this._scriptContextSourceActor = new St.Widget({
+      reactive: true,
+      visible: false,
+    });
+    this._scriptContextSourceActor.connect('button-press-event', () => {
+      if (this._scriptContextMenu?.isOpen) {
+        this._scriptContextMenu.close(BoxPointer.PopupAnimation.FULL);
+      }
+      return Clutter.EVENT_STOP;
+    });
+    Main.uiGroup.add_child(this._scriptContextSourceActor);
+    this._scriptContextMenuManager = new PopupMenu.PopupMenuManager({
+      actor: this._scriptContextSourceActor,
+    });
+
     // Connect search functionality
     this._searchEntry.get_clutter_text().connect('text-changed', () => {
       this._filterMenu();
@@ -452,7 +529,7 @@ export default class LauncherExtension extends Extension {
 
     this._menuId = this._indicator.menu.connect(
       "open-state-changed",
-      (open) => {
+      (menu, open) => {
         if (open) {
           this._fillMenu();
           // Clear search when menu opens
@@ -466,6 +543,8 @@ export default class LauncherExtension extends Extension {
             this._focusTimeout = null;
             return GLib.SOURCE_REMOVE;
           });
+        } else {
+          this._destroyScriptContextMenu();
         }
       },
     );
@@ -499,6 +578,19 @@ export default class LauncherExtension extends Extension {
       flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
     });
 
+    // Register keyboard shortcuts
+    Main.wm.addKeybinding(
+      'toggle-menu',
+      this._settings,
+      Meta.KeyBindingFlags.NONE,
+      Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+      () => {
+        if (this._indicator) {
+          this._indicator.menu.toggle();
+        }
+      }
+    );
+
     // Set up initial file monitoring
     this._setupFileMonitor();
   }
@@ -522,6 +614,9 @@ export default class LauncherExtension extends Extension {
   }
 
   disable() {
+    // Remove keyboard shortcuts
+    Main.wm.removeKeybinding('toggle-menu');
+
     // Clean up timeouts
     if (this._refreshTimeout) {
       GLib.source_remove(this._refreshTimeout);
@@ -559,10 +654,18 @@ export default class LauncherExtension extends Extension {
       this._indicator.menu.disconnect(this._menuId);
     }
 
+    this._destroyScriptContextMenu();
+
     if (this._contextMenu) {
       this._contextMenu.destroy();
       this._contextMenu = null;
     }
+
+    if (this._scriptContextSourceActor) {
+      this._scriptContextSourceActor.destroy();
+      this._scriptContextSourceActor = null;
+    }
+    this._scriptContextMenuManager = null;
 
     if (this._indicator) {
       this._indicator.destroy();
