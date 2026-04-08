@@ -10,6 +10,8 @@
   "language_desc": "Select display language",
   "show_file_extensions": "Show File Extensions",
   "show_file_extensions_desc": "Show file extensions in script list (e.g. Script.sh)",
+  "show_search": "Show Search",
+  "show_search_desc": "Show the search field at the top of the menu",
   "filter_file_extensions": "Filter File Extensions",
   "filter_file_extensions_desc": "Only show files with specific extensions in the list",
   "extensions": "Extensions",

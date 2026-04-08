@@ -10,6 +10,8 @@
   "language_desc": "表示言語を選択",
   "show_file_extensions": "ファイル拡張子を表示",
   "show_file_extensions_desc": "スクリプト一覧にファイル拡張子を表示する（例: Script.sh）",
+  "show_search": "検索を表示",
+  "show_search_desc": "メニュー上部に検索欄を表示する",
   "filter_file_extensions": "ファイル拡張子フィルター",
   "filter_file_extensions_desc": "特定の拡張子のファイルのみを表示",
   "extensions": "拡張子",

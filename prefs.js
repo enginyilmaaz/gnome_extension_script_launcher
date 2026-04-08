@@ -336,6 +336,27 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowStrip.add_suffix(toggleStrip);
     rowStrip.activatable_widget = toggleStrip;
 
+    const rowShowSearch = new Adw.ActionRow({
+      title: t.show_search,
+      subtitle: t.show_search_desc,
+    });
+    group.add(rowShowSearch);
+
+    const toggleShowSearch = new Gtk.Switch({
+      active: settings.get_boolean("show-search"),
+      valign: Gtk.Align.CENTER,
+    });
+
+    settings.bind(
+      "show-search",
+      toggleShowSearch,
+      "active",
+      Gio.SettingsBindFlags.DEFAULT,
+    );
+
+    rowShowSearch.add_suffix(toggleShowSearch);
+    rowShowSearch.activatable_widget = toggleShowSearch;
+
     // Filter File Extensions - toggle row
     const rowFilterToggle = new Adw.ActionRow({
       title: t.filter_file_extensions,
@@ -419,7 +440,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
               file = Gio.File.new_for_path(path);
             }
             const data = {};
-            const keys = ['path', 'default-icon', 'strip', 'file-extensions', 'language',
+            const keys = ['path', 'default-icon', 'strip', 'show-search', 'file-extensions', 'language',
                            'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
             keys.forEach(key => {
               const variant = settings.get_value(key);

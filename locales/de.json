@@ -10,6 +10,8 @@
   "language_desc": "Anzeigesprache auswählen",
   "show_file_extensions": "Dateierweiterungen anzeigen",
   "show_file_extensions_desc": "Dateierweiterungen in der Skriptliste anzeigen (z.B. Script.sh)",
+  "show_search": "Suche anzeigen",
+  "show_search_desc": "Das Suchfeld oben im Menü anzeigen",
   "filter_file_extensions": "Dateierweiterungen filtern",
   "filter_file_extensions_desc": "Nur Dateien mit bestimmten Erweiterungen anzeigen",
   "extensions": "Erweiterungen",

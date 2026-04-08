@@ -10,6 +10,8 @@
   "language_desc": "Выберите язык интерфейса",
   "show_file_extensions": "Показать расширения файлов",
   "show_file_extensions_desc": "Показывать расширения файлов в списке скриптов (напр. Script.sh)",
+  "show_search": "Показывать поиск",
+  "show_search_desc": "Показывать поле поиска в верхней части меню",
   "filter_file_extensions": "Фильтр расширений файлов",
   "filter_file_extensions_desc": "Показывать только файлы с определёнными расширениями",
   "extensions": "Расширения",

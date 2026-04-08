@@ -2,6 +2,9 @@
 
 ## 2026-04-07
 
+- Add Show Search preference and menu search visibility toggle
+- Remove the pinned section header while keeping pinned scripts at the top
+- Improve right-click menu positioning and clickable cursor feedback
 - Detach script right-click actions into a separate popup menu instead of rendering them inside the list
 - Add configurable keyboard shortcut support for toggling the launcher menu
 - Add right-click context menu: Run, Run in Terminal, Pin to Top/Unpin

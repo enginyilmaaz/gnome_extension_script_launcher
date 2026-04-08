@@ -10,6 +10,9 @@
     <key name="strip" type="b">
       <default>true</default>
     </key>
+    <key name="show-search" type="b">
+      <default>true</default>
+    </key>
     <key name="custom-icons" type="b">
       <default>false</default>
     </key>

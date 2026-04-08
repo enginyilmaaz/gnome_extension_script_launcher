@@ -10,6 +10,8 @@
   "language_desc": "Görüntüleme dilini seçin",
   "show_file_extensions": "Dosya Uzantılarını Göster",
   "show_file_extensions_desc": "Betik listesinde dosya uzantılarını göster (ör. Script.sh)",
+  "show_search": "Aramayı Göster",
+  "show_search_desc": "Menünün üst kısmındaki arama alanını göster",
   "filter_file_extensions": "Dosya Uzantısı Filtresi",
   "filter_file_extensions_desc": "Listede yalnızca belirli uzantılı dosyaları göster",
   "extensions": "Uzantılar",
