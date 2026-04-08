@@ -2,6 +2,7 @@
 
 ## 2026-04-07
 
+- Restore the panel icon sizing and search field styling after recent menu UI changes
 - Export and import all settings, including pinned scripts and menu overrides
 - Add menu width and height override settings for the script list popup
 - Add Show Search preference and menu search visibility toggle

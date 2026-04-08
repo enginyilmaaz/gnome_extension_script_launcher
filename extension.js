@@ -173,6 +173,18 @@ export default class LauncherExtension extends Extension {
     }
   }
 
+  _getSearchEntryStyle(width) {
+    return `margin: 0px; min-width: ${width}px; padding: 6px 10px; border-radius: 12px; background-color: rgba(127, 127, 127, 0.12); border: 1px solid rgba(128, 128, 128, 0.18);`;
+  }
+
+  _createPanelIcon() {
+    return new St.Icon({
+      gicon: this._getIcon(),
+      style_class: "system-status-icon",
+      style: 'icon-size: 24px;',
+    });
+  }
+
   _updateMenuLayout() {
     const schema = this._settings?.settings_schema;
     const width = schema?.has_key('menu-width') ? this._settings.get_int('menu-width') : 0;
@@ -184,7 +196,7 @@ export default class LauncherExtension extends Extension {
 
     if (this._searchEntry) {
       const searchWidth = width > 0 ? Math.max(120, width - 24) : 215;
-      this._searchEntry.style = `margin: 0px; padding: 4px 8px; min-width: ${searchWidth}px; border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 4px;`;
+      this._searchEntry.style = this._getSearchEntryStyle(searchWidth);
     }
   }
 
@@ -510,23 +522,18 @@ export default class LauncherExtension extends Extension {
     const t = getLocale(this.path, lang);
 
     this._indicator = new PanelMenu.Button(0.5, this.metadata.name, false);
-    this._indicator.style = 'padding: 0; margin: 0;';
+    this._indicator.style_class = '';
+    this._indicator.style = 'padding-left: 0px; padding-right: 0px;';
+    this._indicator.track_hover = false;
+    this._indicator.reactive = true;
     this._bindPointerCursor(this._indicator);
 
-    // Create icon using settings
-    let gicon = this._getIcon();
-
-    const icon = new St.Icon({
-      gicon: gicon,
-      style_class: "system-status-icon",
-      style: "padding: 0; margin: 0;",
-    });
+    const icon = this._createPanelIcon();
     this._indicator.add_child(icon);
 
     // Create search entry with icon inside
     this._searchEntry = new St.Entry({
-      style_class: 'popup-menu-item',
-      style: 'margin: 0px; padding: 4px 8px; min-width: 215px; border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 4px;',
+      style: this._getSearchEntryStyle(215),
       hint_text: t.search_scripts || 'Search scripts...',
       track_hover: true,
       can_focus: true,
@@ -547,7 +554,7 @@ export default class LauncherExtension extends Extension {
       can_focus: false,
       style_class: '',
     });
-    this._searchMenuItem.actor.style = 'padding: 4px 12px; margin: 0px;';
+    this._searchMenuItem.actor.style = 'padding: 6px 12px 4px; margin: 0px;';
     this._searchMenuItem.add_child(this._searchEntry);
 
     this._menu = new ScrollableMenu();
@@ -702,10 +709,7 @@ export default class LauncherExtension extends Extension {
       }
 
       // Add the new icon
-      const icon = new St.Icon({
-        gicon: this._getIcon(),
-        style_class: "system-status-icon",
-      });
+      const icon = this._createPanelIcon();
       this._indicator.insert_child_at_index(icon, 0);
     }
   }
