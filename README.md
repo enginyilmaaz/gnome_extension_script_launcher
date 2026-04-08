@@ -11,6 +11,7 @@ A GNOME Shell extension that lets you launch `.sh` scripts from the top panel. P
 - **Panel Menu** - Click the panel icon to see all scripts in your configured directory
 - **Search** - Filter scripts by name with the built-in search bar
 - **Show Search Toggle** - Hide or show the search field from preferences
+- **Menu Size Override** - Set custom width and height values for the script list menu
 - **Custom Panel Icon** - Replace the default icon with any system icon or custom image file
 - **Per-Script Icons** - Place a `.svg` or `.png` with the same name as your script (e.g. `backup.svg` for `backup.sh`)
 - **Default Icon** - Set a default icon for all scripts in the menu

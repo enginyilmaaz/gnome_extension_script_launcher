@@ -357,6 +357,52 @@ export default class LauncherPreferences extends ExtensionPreferences {
     rowShowSearch.add_suffix(toggleShowSearch);
     rowShowSearch.activatable_widget = toggleShowSearch;
 
+    const rowMenuWidth = new Adw.ActionRow({
+      title: t.menu_width,
+      subtitle: t.menu_width_desc,
+    });
+    group.add(rowMenuWidth);
+
+    const spinMenuWidth = new Gtk.SpinButton({
+      adjustment: new Gtk.Adjustment({
+        lower: 0,
+        upper: 2000,
+        step_increment: 10,
+        page_increment: 50,
+        value: settings.get_int("menu-width"),
+      }),
+      valign: Gtk.Align.CENTER,
+      digits: 0,
+      width_request: 120,
+    });
+    spinMenuWidth.connect('value-changed', () => {
+      settings.set_int("menu-width", spinMenuWidth.get_value_as_int());
+    });
+    rowMenuWidth.add_suffix(spinMenuWidth);
+
+    const rowMenuHeight = new Adw.ActionRow({
+      title: t.menu_height,
+      subtitle: t.menu_height_desc,
+    });
+    group.add(rowMenuHeight);
+
+    const spinMenuHeight = new Gtk.SpinButton({
+      adjustment: new Gtk.Adjustment({
+        lower: 0,
+        upper: 1600,
+        step_increment: 10,
+        page_increment: 50,
+        value: settings.get_int("menu-height"),
+      }),
+      valign: Gtk.Align.CENTER,
+      digits: 0,
+      width_request: 120,
+    });
+    spinMenuHeight.connect('value-changed', () => {
+      settings.set_int("menu-height", spinMenuHeight.get_value_as_int());
+    });
+    rowMenuHeight.add_suffix(spinMenuHeight);
+
     // Filter File Extensions - toggle row
     const rowFilterToggle = new Adw.ActionRow({
       title: t.filter_file_extensions,
@@ -440,7 +486,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
               file = Gio.File.new_for_path(path);
             }
             const data = {};
-            const keys = ['path', 'default-icon', 'strip', 'show-search', 'file-extensions', 'language',
+            const keys = ['path', 'default-icon', 'strip', 'show-search', 'menu-width', 'menu-height', 'file-extensions', 'language',
                            'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
             keys.forEach(key => {
               const variant = settings.get_value(key);

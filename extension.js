@@ -20,6 +20,7 @@ const ScrollableMenu = class ScrollableMenu extends PopupMenu.PopupMenuSection {
   constructor() {
     super();
     const scrollView = new St.ScrollView();
+    this.scrollView = scrollView;
     this.innerMenu = new PopupMenu.PopupMenuSection();
     const shellVersion = parseFloat(Config.PACKAGE_VERSION)
       .toString()
@@ -31,6 +32,17 @@ const ScrollableMenu = class ScrollableMenu extends PopupMenu.PopupMenuSection {
       scrollView.add_child(this.innerMenu.actor);
       this.actor.add_child(scrollView);
     }
+  }
+
+  setSizeOverride(width, height) {
+    const styles = [];
+    if (width > 0) {
+      styles.push(`min-width: ${width}px; max-width: ${width}px;`);
+    }
+    if (height > 0) {
+      styles.push(`max-height: ${height}px;`);
+    }
+    this.scrollView.style = styles.join(' ');
   }
 };
 
@@ -46,6 +58,8 @@ export default class LauncherExtension extends Extension {
     this._fileMonitor = null;
     this._pathChangedId = null;
     this._showSearchChangedId = null;
+    this._menuWidthChangedId = null;
+    this._menuHeightChangedId = null;
     this._refreshTimeout = null;
     this._searchEntry = null;
     this._searchMenuItem = null;
@@ -156,6 +170,21 @@ export default class LauncherExtension extends Extension {
     }
     if (!showSearch && this._searchEntry) {
       this._searchEntry.set_text('');
+    }
+  }
+
+  _updateMenuLayout() {
+    const schema = this._settings?.settings_schema;
+    const width = schema?.has_key('menu-width') ? this._settings.get_int('menu-width') : 0;
+    const height = schema?.has_key('menu-height') ? this._settings.get_int('menu-height') : 0;
+
+    if (this._menu) {
+      this._menu.setSizeOverride(width, height);
+    }
+
+    if (this._searchEntry) {
+      const searchWidth = width > 0 ? Math.max(120, width - 24) : 215;
+      this._searchEntry.style = `margin: 0px; padding: 4px 8px; min-width: ${searchWidth}px; border: 1px solid rgba(128, 128, 128, 0.3); border-radius: 4px;`;
     }
   }
 
@@ -575,6 +604,7 @@ export default class LauncherExtension extends Extension {
     this._searchEntry.get_clutter_text().connect('text-changed', () => {
       this._filterMenu();
     });
+    this._updateMenuLayout();
     this._updateSearchVisibility();
 
     this._menuId = this._indicator.menu.connect(
@@ -626,6 +656,16 @@ export default class LauncherExtension extends Extension {
     this._showSearchChangedId = this._settings.connect('changed::show-search', () => {
       this._updateSearchVisibility();
     });
+    if (this._settings.settings_schema?.has_key('menu-width')) {
+      this._menuWidthChangedId = this._settings.connect('changed::menu-width', () => {
+        this._updateMenuLayout();
+      });
+    }
+    if (this._settings.settings_schema?.has_key('menu-height')) {
+      this._menuHeightChangedId = this._settings.connect('changed::menu-height', () => {
+        this._updateMenuLayout();
+      });
+    }
 
     this._addIndicator();
     this._launcher = new Gio.SubprocessLauncher({
@@ -709,6 +749,14 @@ export default class LauncherExtension extends Extension {
       if (this._showSearchChangedId) {
         this._settings.disconnect(this._showSearchChangedId);
         this._showSearchChangedId = null;
+      }
+      if (this._menuWidthChangedId) {
+        this._settings.disconnect(this._menuWidthChangedId);
+        this._menuWidthChangedId = null;
+      }
+      if (this._menuHeightChangedId) {
+        this._settings.disconnect(this._menuHeightChangedId);
+        this._menuHeightChangedId = null;
       }
     }
 

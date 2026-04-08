@@ -2,6 +2,7 @@
 
 ## 2026-04-07
 
+- Add menu width and height override settings for the script list popup
 - Add Show Search preference and menu search visibility toggle
 - Remove the pinned section header while keeping pinned scripts at the top
 - Improve right-click menu positioning and clickable cursor feedback
