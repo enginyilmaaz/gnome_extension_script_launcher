@@ -807,6 +807,10 @@ export default class LauncherExtension extends Extension {
     }
 
     this._destroyScriptContextMenu();
+    if (this._scriptContextMenu) {
+      this._scriptContextMenu.destroy();
+      this._scriptContextMenu = null;
+    }
 
     if (this._contextMenu) {
       this._contextMenu.destroy();
