@@ -4,26 +4,25 @@
 
 A customized fork of [Launcher](https://extensions.gnome.org/extension/5874/launcher/).
 
-A GNOME Shell extension that lets you launch `.sh` scripts from the top panel. Place your scripts in a directory, and they appear as a searchable menu.
+A GNOME Shell extension that lets you launch scripts from the top panel with a searchable popup menu, pinned favorites, right-click actions, and import/exportable settings.
 
 ### Features
 
-- **Panel Menu** - Click the panel icon to see all scripts in your configured directory
-- **Search** - Filter scripts by name with the built-in search bar
+- **Panel Menu** - Open the script list directly from the top panel
+- **Search** - Filter scripts instantly with the built-in search bar
+- **Pinned Scripts** - Keep selected scripts at the top of the list
+- **Script Context Menu** - Right-click a script to Run, Run in Terminal, or Pin/Unpin it
+- **Right-Click Settings** - Open extension preferences from the panel icon context menu
 - **Show Search Toggle** - Hide or show the search field from preferences
-- **Menu Size Override** - Set custom width and height values for the script list menu
-- **Custom Panel Icon** - Replace the default icon with any system icon or custom image file
-- **Per-Script Icons** - Place a `.svg` or `.png` with the same name as your script (e.g. `backup.svg` for `backup.sh`)
-- **Default Icon** - Set a default icon for all scripts in the menu
-- **File Pickers** - Browse for scripts directory and icon files directly from settings
-- **Icon Preview** - Preview icons with tooltip before applying
-- **Run in Terminal** - Right-click a script to run it in gnome-terminal for interactive scripts
-- **Pin to Top** - Right-click a script to pin it above a separator for quick access
-- **File Extension Filter** - Filter visible scripts by extension (e.g. `.sh,.py,.js`)
-- **Multi-Language** - 8 languages (EN, TR, RU, DE, IT, JA, FR, ES) with auto system detection
-- **Show/Hide Extensions** - Toggle file extension visibility in the script list
-- **Backup & Import** - Export/import all settings, including pinned scripts, as `.conf` files with native OS notifications
-- **Right-Click Settings** - Quick access to preferences from the panel icon
+- **Menu Size Override** - Set custom width and height values for the popup list
+- **Custom Panel Icon** - Replace the top panel icon with a system icon or image file
+- **Per-Script Icons** - Use `.svg` or `.png` files that match script names
+- **Default Icon** - Configure a fallback icon for scripts without a custom icon
+- **File Extension Filter** - Filter visible scripts by extension such as `.sh,.py,.js`
+- **Show/Hide Extensions** - Toggle file extension visibility in script labels
+- **Backup & Import** - Export and import all settings, including pinned scripts and menu overrides
+- **File Pickers and Icon Preview** - Pick folders/icons from preferences and preview them before applying
+- **Multi-Language** - Includes EN, TR, RU, DE, IT, JA, FR, and ES with automatic language detection
 
 ### Installation
 
@@ -35,10 +34,11 @@ A GNOME Shell extension that lets you launch `.sh` scripts from the top panel. P
 
 ### Usage
 
-1. Place your `.sh` scripts in `~/scripts` (default) or configure a custom path in Settings
-2. Click the panel icon to see your scripts
+1. Place your scripts in `~/scripts` (default) or set a custom path in Preferences
+2. Click the panel icon to open the launcher menu
 3. Click a script to run it
-4. Right-click the panel icon for Settings
+4. Right-click a script for Run in Terminal and Pin/Unpin actions
+5. Right-click the panel icon to open Settings
 
 ### Compatibility
 

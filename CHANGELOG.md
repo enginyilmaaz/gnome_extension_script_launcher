@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-09
+
+- Fix EGO015: disconnect all signals connected in enable() during disable()
+- Fix EGO014: properly destroy objects created in enable() during disable()
+- Fix EGO030: replace synchronous file IO with async load_contents_async in locale loading
+- Add _unbindPointerCursor helper for proper signal cleanup on actors
+
+## 2026-04-08
+
+- Prepare version 1.1.0 for the next GNOME Extensions upload bundle
+- Refresh README and extension metadata to match the current feature set
+- Remove keyboard shortcut support and the related GSettings schema key
+- Refine menu spacing, panel icon sizing, search field layout, and pointer cursor behavior
+
 ## 2026-04-07
 
 - Remove keyboard shortcut support and the related GSettings schema key
