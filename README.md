@@ -23,7 +23,7 @@ A GNOME Shell extension that lets you launch `.sh` scripts from the top panel. P
 - **File Extension Filter** - Filter visible scripts by extension (e.g. `.sh,.py,.js`)
 - **Multi-Language** - 8 languages (EN, TR, RU, DE, IT, JA, FR, ES) with auto system detection
 - **Show/Hide Extensions** - Toggle file extension visibility in the script list
-- **Backup & Import** - Export/import settings as `.conf` files with native OS notifications
+- **Backup & Import** - Export/import all settings, including pinned scripts, as `.conf` files with native OS notifications
 - **Right-Click Settings** - Quick access to preferences from the panel icon
 
 ### Installation

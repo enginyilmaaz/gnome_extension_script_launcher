@@ -2,6 +2,7 @@
 
 ## 2026-04-07
 
+- Export and import all settings, including pinned scripts and menu overrides
 - Add menu width and height override settings for the script list popup
 - Add Show Search preference and menu search visibility toggle
 - Remove the pinned section header while keeping pinned scripts at the top

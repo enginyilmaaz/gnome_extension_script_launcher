@@ -14,6 +14,38 @@ export default class LauncherPreferences extends ExtensionPreferences {
     }
   }
 
+  _exportSettings(settings) {
+    const data = {};
+    const schema = settings.settings_schema;
+    for (const key of schema.list_keys()) {
+      data[key] = settings.get_value(key).recursiveUnpack();
+    }
+    return data;
+  }
+
+  _importSettings(settings, data) {
+    const schema = settings.settings_schema;
+    for (const [key, value] of Object.entries(data)) {
+      if (!schema.has_key(key)) {
+        continue;
+      }
+
+      const type = settings.get_value(key).get_type_string();
+      if (type === 'b' && typeof value === 'boolean') {
+        settings.set_boolean(key, value);
+      } else if (type === 'i' && Number.isInteger(value)) {
+        settings.set_int(key, value);
+      } else if (type === 's' && typeof value === 'string') {
+        settings.set_string(key, value);
+      } else if (type === 'as' && Array.isArray(value)) {
+        settings.set_strv(
+          key,
+          value.filter(item => typeof item === 'string')
+        );
+      }
+    }
+  }
+
   fillPreferencesWindow(window) {
     const settings = this.getSettings();
     const extPath = this.path;
@@ -485,14 +517,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
               path = `${path}.conf`;
               file = Gio.File.new_for_path(path);
             }
-            const data = {};
-            const keys = ['path', 'default-icon', 'strip', 'show-search', 'menu-width', 'menu-height', 'file-extensions', 'language',
-                           'custom-icons', 'custom-icon-map', 'use-custom-top-icon', 'top-icon-name'];
-            keys.forEach(key => {
-              const variant = settings.get_value(key);
-              data[key] = variant.recursiveUnpack();
-            });
-            const json = JSON.stringify(data, null, 2);
+            const json = JSON.stringify(this._exportSettings(settings), null, 2);
             file.replace_contents(new TextEncoder().encode(json), null, false,
               Gio.FileCreateFlags.REPLACE_DESTINATION, null);
             this._sendNotification('Script Launcher', `Exported to ${path}`);
@@ -538,10 +563,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
             }
             const json = new TextDecoder().decode(contents);
             const data = JSON.parse(json);
-            Object.entries(data).forEach(([key, value]) => {
-              if (typeof value === 'boolean') settings.set_boolean(key, value);
-              else if (typeof value === 'string') settings.set_string(key, value);
-            });
+            this._importSettings(settings, data);
             this._sendNotification('Script Launcher', `Imported from ${file.get_path()}`);
           }
         } catch (e) {
