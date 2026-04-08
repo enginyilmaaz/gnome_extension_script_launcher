@@ -8,7 +8,6 @@ import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import St from "gi://St";
 import Clutter from "gi://Clutter";
-import Shell from "gi://Shell";
 import Meta from "gi://Meta";
 import { getLocale, clearCache } from "./locale.js";
 
@@ -137,9 +136,11 @@ export default class LauncherExtension extends Extension {
   }
 
   _bindPointerCursor(actor) {
-    if (!actor) {
+    if (!actor || actor._scriptLauncherPointerBound) {
       return;
     }
+
+    actor._scriptLauncherPointerBound = true;
 
     actor.connect('enter-event', () => {
       this._hoverCursorActor = actor;
@@ -161,6 +162,10 @@ export default class LauncherExtension extends Extension {
         global.display.set_cursor(Meta.Cursor.DEFAULT);
       }
     });
+
+    if (typeof actor.get_children === 'function') {
+      actor.get_children().forEach(child => this._bindPointerCursor(child));
+    }
   }
 
   _updateSearchVisibility() {
@@ -174,14 +179,14 @@ export default class LauncherExtension extends Extension {
   }
 
   _getSearchEntryStyle(width) {
-    return `margin: 0px; min-width: ${width}px; padding: 6px 10px; border-radius: 12px; background-color: rgba(127, 127, 127, 0.12); border: 1px solid rgba(128, 128, 128, 0.18);`;
+    return `margin: 0px; min-width: ${width}px; max-width: ${width}px; padding: 6px 10px; border-radius: 12px; background-color: rgba(127, 127, 127, 0.12); border: 1px solid rgba(128, 128, 128, 0.18);`;
   }
 
   _createPanelIcon() {
     return new St.Icon({
       gicon: this._getIcon(),
       style_class: "system-status-icon",
-      style: 'icon-size: 24px;',
+      style: "padding: 0; margin: 0;",
     });
   }
 
@@ -195,7 +200,7 @@ export default class LauncherExtension extends Extension {
     }
 
     if (this._searchEntry) {
-      const searchWidth = width > 0 ? Math.max(120, width - 24) : 215;
+      const searchWidth = width > 0 ? Math.max(120, width) : 239;
       this._searchEntry.style = this._getSearchEntryStyle(searchWidth);
     }
   }
@@ -272,7 +277,9 @@ export default class LauncherExtension extends Extension {
       pinnedScripts.forEach(info => this._addScriptMenuItem(info, t));
 
       if (unpinnedScripts.length > 0) {
-        this._menu.innerMenu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        const separator = new PopupMenu.PopupSeparatorMenuItem();
+        separator.actor.style = 'margin: 0px; padding: 3px 0px;';
+        this._menu.innerMenu.addMenuItem(separator);
       }
     }
 
@@ -522,10 +529,7 @@ export default class LauncherExtension extends Extension {
     const t = getLocale(this.path, lang);
 
     this._indicator = new PanelMenu.Button(0.5, this.metadata.name, false);
-    this._indicator.style_class = '';
-    this._indicator.style = 'padding-left: 0px; padding-right: 0px;';
-    this._indicator.track_hover = false;
-    this._indicator.reactive = true;
+    this._indicator.style = 'padding: 0; margin: 0;';
     this._bindPointerCursor(this._indicator);
 
     const icon = this._createPanelIcon();
@@ -533,7 +537,7 @@ export default class LauncherExtension extends Extension {
 
     // Create search entry with icon inside
     this._searchEntry = new St.Entry({
-      style: this._getSearchEntryStyle(215),
+      style: this._getSearchEntryStyle(239),
       hint_text: t.search_scripts || 'Search scripts...',
       track_hover: true,
       can_focus: true,
@@ -554,7 +558,7 @@ export default class LauncherExtension extends Extension {
       can_focus: false,
       style_class: '',
     });
-    this._searchMenuItem.actor.style = 'padding: 6px 12px 4px; margin: 0px;';
+    this._searchMenuItem.actor.style = 'padding: 6px 0px 8px; margin: 0px;';
     this._searchMenuItem.add_child(this._searchEntry);
 
     this._menu = new ScrollableMenu();
@@ -679,22 +683,6 @@ export default class LauncherExtension extends Extension {
       flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
     });
 
-    // Register keyboard shortcut only when the installed schema contains the key.
-    if (this._settings.settings_schema?.has_key('toggle-menu')) {
-      Main.wm.addKeybinding(
-        'toggle-menu',
-        this._settings,
-        Meta.KeyBindingFlags.NONE,
-        Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
-        () => {
-          if (this._indicator) {
-            this._indicator.menu.toggle();
-          }
-        }
-      );
-      this._toggleMenuKeybindingRegistered = true;
-    }
-
     // Set up initial file monitoring
     this._setupFileMonitor();
   }
@@ -715,11 +703,6 @@ export default class LauncherExtension extends Extension {
   }
 
   disable() {
-    if (this._toggleMenuKeybindingRegistered) {
-      Main.wm.removeKeybinding('toggle-menu');
-      this._toggleMenuKeybindingRegistered = false;
-    }
-
     // Clean up timeouts
     if (this._refreshTimeout) {
       GLib.source_remove(this._refreshTimeout);
