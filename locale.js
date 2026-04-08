@@ -16,35 +16,49 @@ function _getSystemLanguage() {
   return 'en';
 }
 
-export function getLocale(extensionPath, langSetting) {
+function _resolveCode(langSetting) {
   const lang = (!langSetting || langSetting === 'auto')
     ? _getSystemLanguage()
     : langSetting;
+  return SUPPORTED_LANGS.includes(lang) ? lang : 'en';
+}
 
-  const code = SUPPORTED_LANGS.includes(lang) ? lang : 'en';
-
-  if (_cache[code]) {
-    return _cache[code];
-  }
-
-  const filePath = GLib.build_filenamev([extensionPath, 'locales', `${code}.json`]);
-  try {
-    const file = Gio.File.new_for_path(filePath);
-    const [ok, contents] = file.load_contents(null);
-    if (ok) {
-      const json = new TextDecoder().decode(contents);
-      _cache[code] = JSON.parse(json);
-      return _cache[code];
+export function preloadLocale(extensionPath, langSetting) {
+  return new Promise((resolve) => {
+    const code = _resolveCode(langSetting);
+    if (_cache[code]) {
+      resolve(_cache[code]);
+      return;
     }
-  } catch (e) {
-    // fallback
-  }
 
-  // Fallback to English
-  if (code !== 'en') {
-    return getLocale(extensionPath, 'en');
-  }
+    const filePath = GLib.build_filenamev([extensionPath, 'locales', `${code}.json`]);
+    const file = Gio.File.new_for_path(filePath);
 
+    file.load_contents_async(null, (sourceObject, result) => {
+      try {
+        const [ok, contents] = sourceObject.load_contents_finish(result);
+        if (ok) {
+          _cache[code] = JSON.parse(new TextDecoder().decode(contents));
+          resolve(_cache[code]);
+          return;
+        }
+      } catch (e) {
+        // fallback
+      }
+
+      if (code !== 'en') {
+        preloadLocale(extensionPath, 'en').then(resolve);
+      } else {
+        resolve({});
+      }
+    });
+  });
+}
+
+export function getLocale(extensionPath, langSetting) {
+  const code = _resolveCode(langSetting);
+  if (_cache[code]) return _cache[code];
+  if (code !== 'en' && _cache['en']) return _cache['en'];
   return {};
 }
 

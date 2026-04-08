@@ -3,7 +3,28 @@ import Adw from "gi://Adw";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk";
-import { getLocale, clearCache } from "./locale.js";
+const _SUPPORTED_LANGS = ['en', 'tr', 'ru', 'de', 'it', 'ja', 'fr', 'es'];
+
+function _loadLocaleData(extPath, langSetting) {
+  let lang = langSetting;
+  if (!lang || lang === 'auto') {
+    const langs = GLib.get_language_names();
+    lang = 'en';
+    for (const l of langs) {
+      const code = l.split('_')[0].split('.')[0].toLowerCase();
+      if (_SUPPORTED_LANGS.includes(code)) { lang = code; break; }
+    }
+  }
+  const code = _SUPPORTED_LANGS.includes(lang) ? lang : 'en';
+  const filePath = GLib.build_filenamev([extPath, 'locales', `${code}.json`]);
+  try {
+    const file = Gio.File.new_for_path(filePath);
+    const [ok, contents] = file.load_contents(null);
+    if (ok) return JSON.parse(new TextDecoder().decode(contents));
+  } catch (e) { /* fallback */ }
+  if (code !== 'en') return _loadLocaleData(extPath, 'en');
+  return {};
+}
 
 export default class LauncherPreferences extends ExtensionPreferences {
   _sendNotification(title, body) {
@@ -49,7 +70,7 @@ export default class LauncherPreferences extends ExtensionPreferences {
   fillPreferencesWindow(window) {
     const settings = this.getSettings();
     const extPath = this.path;
-    let t = getLocale(extPath, settings.get_string("language"));
+    let t = _loadLocaleData(extPath, settings.get_string("language"));
 
     const page = new Adw.PreferencesPage();
 

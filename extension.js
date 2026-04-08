@@ -9,7 +9,7 @@ import GLib from "gi://GLib";
 import St from "gi://St";
 import Clutter from "gi://Clutter";
 import Meta from "gi://Meta";
-import { getLocale, clearCache } from "./locale.js";
+import { getLocale, preloadLocale, clearCache } from "./locale.js";
 
 // Default icon for the top panel
 const DEFAULT_ICON = "utilities-terminal-symbolic";
@@ -69,12 +69,22 @@ export default class LauncherExtension extends Extension {
     this._scriptContextMenuManager = null;
     this._scriptContextSourceActor = null;
     this._hoverCursorActor = null;
+    this._fileMonitorChangedId = null;
+    this._indicatorButtonPressId = null;
+    this._contextSourceButtonPressId = null;
+    this._searchTextChangedId = null;
+    this._contextMenuOpenStateId = null;
+    this._langChangedId = null;
   }
 
 
   _setupFileMonitor() {
     // Clean up existing monitor
     if (this._fileMonitor) {
+      if (this._fileMonitorChangedId) {
+        this._fileMonitor.disconnect(this._fileMonitorChangedId);
+        this._fileMonitorChangedId = null;
+      }
       this._fileMonitor.cancel();
       this._fileMonitor = null;
     }
@@ -95,7 +105,7 @@ export default class LauncherExtension extends Extension {
         null
       );
 
-      this._fileMonitor.connect('changed', () => {
+      this._fileMonitorChangedId = this._fileMonitor.connect('changed', () => {
         // Debounce the refresh to avoid too many updates
         if (this._refreshTimeout) {
           GLib.source_remove(this._refreshTimeout);
@@ -142,13 +152,13 @@ export default class LauncherExtension extends Extension {
 
     actor._scriptLauncherPointerBound = true;
 
-    actor.connect('enter-event', () => {
+    actor._slEnterId = actor.connect('enter-event', () => {
       this._hoverCursorActor = actor;
       global.display.set_cursor(Meta.Cursor.POINTING_HAND);
       return Clutter.EVENT_PROPAGATE;
     });
 
-    actor.connect('leave-event', () => {
+    actor._slLeaveId = actor.connect('leave-event', () => {
       if (this._hoverCursorActor === actor) {
         this._hoverCursorActor = null;
         global.display.set_cursor(Meta.Cursor.DEFAULT);
@@ -156,7 +166,7 @@ export default class LauncherExtension extends Extension {
       return Clutter.EVENT_PROPAGATE;
     });
 
-    actor.connect('destroy', () => {
+    actor._slDestroyId = actor.connect('destroy', () => {
       if (this._hoverCursorActor === actor) {
         this._hoverCursorActor = null;
         global.display.set_cursor(Meta.Cursor.DEFAULT);
@@ -166,6 +176,23 @@ export default class LauncherExtension extends Extension {
     if (typeof actor.get_children === 'function') {
       actor.get_children().forEach(child => this._bindPointerCursor(child));
     }
+  }
+
+  _unbindPointerCursor(actor) {
+    if (!actor || !actor._scriptLauncherPointerBound) return;
+    if (actor._slEnterId) {
+      actor.disconnect(actor._slEnterId);
+      actor._slEnterId = null;
+    }
+    if (actor._slLeaveId) {
+      actor.disconnect(actor._slLeaveId);
+      actor._slLeaveId = null;
+    }
+    if (actor._slDestroyId) {
+      actor.disconnect(actor._slDestroyId);
+      actor._slDestroyId = null;
+    }
+    actor._scriptLauncherPointerBound = false;
   }
 
   _updateSearchVisibility() {
@@ -349,7 +376,7 @@ export default class LauncherExtension extends Extension {
     menu.actor.hide();
     Main.uiGroup.add_child(menu.actor);
 
-    menu.connect('open-state-changed', (popup, open) => {
+    this._contextMenuOpenStateId = menu.connect('open-state-changed', (popup, open) => {
       if (!open && this._scriptContextMenu === popup) {
         this._destroyScriptContextMenu();
       }
@@ -477,6 +504,10 @@ export default class LauncherExtension extends Extension {
     if (this._scriptContextMenu) {
       const menu = this._scriptContextMenu;
       this._scriptContextMenu = null;
+      if (this._contextMenuOpenStateId) {
+        menu.disconnect(this._contextMenuOpenStateId);
+        this._contextMenuOpenStateId = null;
+      }
       menu.destroy();
     }
     if (this._scriptContextSourceActor) {
@@ -578,7 +609,7 @@ export default class LauncherExtension extends Extension {
     this._bindPointerCursor(settingsItem.actor);
 
 
-    this._indicator.connect('button-press-event', (actor, event) => {
+    this._indicatorButtonPressId = this._indicator.connect('button-press-event', (actor, event) => {
       if (event.get_button() === Clutter.BUTTON_SECONDARY) {
         if (this._indicator.menu.isOpen)
           this._indicator.menu.close();
@@ -600,7 +631,7 @@ export default class LauncherExtension extends Extension {
       reactive: true,
       visible: false,
     });
-    this._scriptContextSourceActor.connect('button-press-event', () => {
+    this._contextSourceButtonPressId = this._scriptContextSourceActor.connect('button-press-event', () => {
       if (this._scriptContextMenu?.isOpen) {
         this._scriptContextMenu.close(BoxPointer.PopupAnimation.FULL);
       }
@@ -612,7 +643,7 @@ export default class LauncherExtension extends Extension {
     });
 
     // Connect search functionality
-    this._searchEntry.get_clutter_text().connect('text-changed', () => {
+    this._searchTextChangedId = this._searchEntry.get_clutter_text().connect('text-changed', () => {
       this._filterMenu();
     });
     this._updateMenuLayout();
@@ -642,7 +673,7 @@ export default class LauncherExtension extends Extension {
     );
   }
 
-  enable() {
+  async enable() {
     this._settings = this.getSettings();
 
     // Set default path to ~/scripts if not configured
@@ -650,6 +681,15 @@ export default class LauncherExtension extends Extension {
       const defaultPath = GLib.build_filenamev([GLib.get_home_dir(), 'scripts']);
       this._settings.set_string("path", defaultPath);
     }
+
+    // Preload locale asynchronously to avoid synchronous file IO in shell
+    const lang = this._settings.get_string("language");
+    await preloadLocale(this.path, lang);
+
+    // Preload new locale when language setting changes
+    this._langChangedId = this._settings.connect('changed::language', () => {
+      preloadLocale(this.path, this._settings.get_string("language"));
+    });
 
     // Set up settings change listeners for icon settings
     this._iconSettingsChangedId1 = this._settings.connect('changed::use-custom-top-icon', () => {
@@ -715,6 +755,10 @@ export default class LauncherExtension extends Extension {
 
     // Clean up file monitor
     if (this._fileMonitor) {
+      if (this._fileMonitorChangedId) {
+        this._fileMonitor.disconnect(this._fileMonitorChangedId);
+        this._fileMonitorChangedId = null;
+      }
       this._fileMonitor.cancel();
       this._fileMonitor = null;
     }
@@ -745,11 +789,21 @@ export default class LauncherExtension extends Extension {
         this._settings.disconnect(this._menuHeightChangedId);
         this._menuHeightChangedId = null;
       }
+      if (this._langChangedId) {
+        this._settings.disconnect(this._langChangedId);
+        this._langChangedId = null;
+      }
     }
 
     // Disconnect menu
     if (this._indicator && this._menuId) {
       this._indicator.menu.disconnect(this._menuId);
+    }
+
+    // Disconnect search text-changed signal
+    if (this._searchEntry && this._searchTextChangedId) {
+      this._searchEntry.get_clutter_text().disconnect(this._searchTextChangedId);
+      this._searchTextChangedId = null;
     }
 
     this._destroyScriptContextMenu();
@@ -760,14 +814,34 @@ export default class LauncherExtension extends Extension {
     }
 
     if (this._scriptContextSourceActor) {
+      if (this._contextSourceButtonPressId) {
+        this._scriptContextSourceActor.disconnect(this._contextSourceButtonPressId);
+        this._contextSourceButtonPressId = null;
+      }
       this._scriptContextSourceActor.destroy();
       this._scriptContextSourceActor = null;
     }
-    this._scriptContextMenuManager = null;
+    if (this._scriptContextMenuManager) {
+      if (typeof this._scriptContextMenuManager.destroy === 'function') {
+        this._scriptContextMenuManager.destroy();
+      }
+      this._scriptContextMenuManager = null;
+    }
 
     if (this._indicator) {
+      if (this._indicatorButtonPressId) {
+        this._indicator.disconnect(this._indicatorButtonPressId);
+        this._indicatorButtonPressId = null;
+      }
+      this._unbindPointerCursor(this._indicator);
       this._indicator.destroy();
       this._indicator = null;
+    }
+
+    // Reset cursor if still overridden
+    if (this._hoverCursorActor) {
+      global.display.set_cursor(Meta.Cursor.DEFAULT);
+      this._hoverCursorActor = null;
     }
 
     this._menuId = null;
