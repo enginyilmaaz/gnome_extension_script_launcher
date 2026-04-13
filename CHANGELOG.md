@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-04-13
+
+- Fix EGO-L-002: add explicit destroy() calls for menu, searchEntry, and searchMenuItem in disable()
+- Fix EGO-P-005: replace bundled panel.png binary with vector panel.svg
+- Add shexli static analyzer test script (test/runTest.sh)
+
 ## 2026-04-09
 
 - Fix EGO015: disconnect all signals connected in enable() during disable()

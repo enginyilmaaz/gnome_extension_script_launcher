@@ -518,8 +518,8 @@ export default class LauncherExtension extends Extension {
 
   // Helper function to get the icon based on settings
   _getIcon() {
-    // Default: use bundled panel.png
-    const fallbackPath = GLib.build_filenamev([this.path, 'icons', 'panel.png']);
+    // Default: use bundled panel.svg
+    const fallbackPath = GLib.build_filenamev([this.path, 'icons', 'panel.svg']);
     let gicon;
     try {
       const fallbackFile = Gio.File.new_for_path(fallbackPath);
@@ -832,6 +832,21 @@ export default class LauncherExtension extends Extension {
       this._scriptContextMenuManager = null;
     }
 
+    if (this._menu) {
+      this._menu.destroy();
+      this._menu = null;
+    }
+
+    if (this._searchEntry) {
+      this._searchEntry.destroy();
+      this._searchEntry = null;
+    }
+
+    if (this._searchMenuItem) {
+      this._searchMenuItem.destroy();
+      this._searchMenuItem = null;
+    }
+
     if (this._indicator) {
       if (this._indicatorButtonPressId) {
         this._indicator.disconnect(this._indicatorButtonPressId);
@@ -849,11 +864,8 @@ export default class LauncherExtension extends Extension {
     }
 
     this._menuId = null;
-    this._menu = null;
     this._settings = null;
     this._launcher = null;
-    this._searchEntry = null;
-    this._searchMenuItem = null;
     this._allScripts = [];
   }
 }
