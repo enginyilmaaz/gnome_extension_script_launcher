@@ -4,7 +4,8 @@
 
 - Add "Hide to list" action to the script right-click menu to hide scripts from the launcher list
 - Add "Hidden Scripts" window (opened from the panel icon menu) to view and unhide hidden scripts
-- Bump version to 1.2.1
+- Remove dead code and unused schema/locale keys, drop a non-functional preferences width guard and a dead context-menu coordinate fallback, and trim redundant comments
+- Bump version to 1.2.2
 
 ## 2026-04-13
 
