@@ -36,5 +36,10 @@
   "unpin": "Unpin",
   "no_scripts_found": "No scripts found",
   "directory_not_found": "Directory not found",
-  "pinned": "Pinned"
+  "pinned": "Pinned",
+  "hide": "Hide",
+  "unhide": "Unhide",
+  "hidden_scripts": "Hidden Scripts",
+  "no_hidden_scripts": "No hidden scripts",
+  "close": "Close"
 }

@@ -36,5 +36,10 @@
   "unpin": "Открепить",
   "no_scripts_found": "Скрипты не найдены",
   "directory_not_found": "Каталог не найден",
-  "pinned": "Закреплённые"
+  "pinned": "Закреплённые",
+  "hide": "Скрыть",
+  "unhide": "Показать",
+  "hidden_scripts": "Скрытые скрипты",
+  "no_hidden_scripts": "Нет скрытых скриптов",
+  "close": "Закрыть"
 }

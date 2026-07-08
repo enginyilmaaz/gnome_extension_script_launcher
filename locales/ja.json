@@ -36,5 +36,10 @@
   "unpin": "固定解除",
   "no_scripts_found": "スクリプトが見つかりません",
   "directory_not_found": "ディレクトリが見つかりません",
-  "pinned": "固定済み"
+  "pinned": "固定済み",
+  "hide": "非表示",
+  "unhide": "再表示",
+  "hidden_scripts": "非表示のスクリプト",
+  "no_hidden_scripts": "非表示のスクリプトはありません",
+  "close": "閉じる"
 }
