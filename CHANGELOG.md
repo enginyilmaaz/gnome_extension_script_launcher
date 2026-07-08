@@ -4,7 +4,7 @@
 
 - Add "Hide to list" action to the script right-click menu to hide scripts from the launcher list
 - Add "Hidden Scripts" window (opened from the panel icon menu) to view and unhide hidden scripts
-- Bump version to 1.2.0
+- Bump version to 1.2.1
 
 ## 2026-04-13
 
