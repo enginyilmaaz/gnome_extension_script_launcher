@@ -31,6 +31,9 @@
     <key name="hidden-scripts" type="s">
       <default>"[]"</default>
     </key>
+    <key name="prefs-open-page" type="s">
+      <default>""</default>
+    </key>
     <key name="language" type="s">
       <default>"auto"</default>
     </key>

@@ -3,7 +3,6 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import * as BoxPointer from "resource:///org/gnome/shell/ui/boxpointer.js";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
-import * as ModalDialog from "resource:///org/gnome/shell/ui/modalDialog.js";
 import * as Config from "resource:///org/gnome/shell/misc/config.js";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
@@ -76,7 +75,6 @@ export default class LauncherExtension extends Extension {
     this._searchTextChangedId = null;
     this._contextMenuOpenStateId = null;
     this._langChangedId = null;
-    this._hiddenScriptsDialog = null;
   }
 
 
@@ -163,16 +161,6 @@ export default class LauncherExtension extends Extension {
     const hidden = this._getHiddenScripts();
     if (!hidden.includes(scriptName)) {
       hidden.push(scriptName);
-      this._setHiddenScripts(hidden);
-    }
-    this._fillMenu();
-  }
-
-  _unhideScript(scriptName) {
-    const hidden = this._getHiddenScripts();
-    const idx = hidden.indexOf(scriptName);
-    if (idx >= 0) {
-      hidden.splice(idx, 1);
       this._setHiddenScripts(hidden);
     }
     this._fillMenu();
@@ -568,115 +556,6 @@ export default class LauncherExtension extends Extension {
     this._pendingContextInfo = null;
   }
 
-  _showHiddenScriptsDialog() {
-    const lang = this._settings.get_string("language");
-    const t = getLocale(this.path, lang);
-
-    // Ensure the path is current (menu may never have been opened yet)
-    this._path = this._settings.get_string("path");
-
-    if (this._hiddenScriptsDialog) {
-      this._hiddenScriptsDialog.destroy();
-      this._hiddenScriptsDialog = null;
-    }
-
-    // destroyOnClose:false so the instance lifecycle is managed explicitly
-    // (destroyed and nulled on the next open and in disable()); this avoids a
-    // self-'destroy' signal handler that would need a matching disconnect.
-    const dialog = new ModalDialog.ModalDialog({ destroyOnClose: false });
-    this._hiddenScriptsDialog = dialog;
-
-    const title = new St.Label({
-      text: t.hidden_scripts || 'Hidden Scripts',
-      style: 'font-weight: bold; font-size: 1.2em; margin-bottom: 12px;',
-      x_align: Clutter.ActorAlign.CENTER,
-    });
-    dialog.contentLayout.add_child(title);
-
-    const scrollView = new St.ScrollView({
-      style: 'max-height: 400px; min-width: 360px;',
-    });
-    const listBox = new St.BoxLayout({
-      vertical: true,
-      style: 'spacing: 4px;',
-    });
-    const shellVersion = parseFloat(Config.PACKAGE_VERSION).toString().slice(0, 2);
-    if (shellVersion == 45) {
-      scrollView.add_actor(listBox);
-    } else {
-      scrollView.add_child(listBox);
-    }
-    dialog.contentLayout.add_child(scrollView);
-
-    const emptyLabel = new St.Label({
-      text: t.no_hidden_scripts || 'No hidden scripts',
-      style: 'margin: 12px;',
-      x_align: Clutter.ActorAlign.CENTER,
-    });
-
-    const path = this._path;
-    const hidden = this._getHiddenScripts();
-    const rows = [];
-
-    const refreshEmptyState = () => {
-      emptyLabel.visible = !rows.some((row) => row.visible);
-    };
-
-    hidden.forEach((scriptName) => {
-      // Skip hidden scripts whose file no longer exists on disk
-      const file = Gio.File.new_for_path(`${path}/${scriptName}`);
-      if (!file.query_exists(null)) {
-        return;
-      }
-
-      const info = this._buildScriptInfo(scriptName);
-
-      const row = new St.BoxLayout({ style: 'spacing: 8px; padding: 6px;' });
-
-      row.add_child(new St.Icon({
-        gicon: info.icon,
-        icon_size: 20,
-        y_align: Clutter.ActorAlign.CENTER,
-      }));
-
-      row.add_child(new St.Label({
-        text: info.displayName,
-        y_align: Clutter.ActorAlign.CENTER,
-        x_expand: true,
-      }));
-
-      const unhideBtn = new St.Button({
-        label: t.unhide || 'Unhide',
-        style_class: 'button',
-        style: 'padding: 4px 12px;',
-        y_align: Clutter.ActorAlign.CENTER,
-      });
-      this._bindPointerCursor(unhideBtn);
-      unhideBtn.connect('clicked', () => {
-        this._unhideScript(scriptName);
-        row.visible = false;
-        refreshEmptyState();
-      });
-      row.add_child(unhideBtn);
-
-      listBox.add_child(row);
-      rows.push(row);
-    });
-
-    listBox.add_child(emptyLabel);
-    refreshEmptyState();
-
-    dialog.setButtons([
-      {
-        label: t.close || 'Close',
-        action: () => dialog.close(),
-        key: Clutter.KEY_Escape,
-      },
-    ]);
-
-    dialog.open();
-  }
-
   // Helper function to get the icon based on settings
   _getIcon() {
     // Default: use bundled panel.svg
@@ -766,11 +645,13 @@ export default class LauncherExtension extends Extension {
 
     const hiddenScriptsItem = this._contextMenu.addAction(t.hidden_scripts || 'Hidden Scripts', () => {
       this._contextMenu.close();
-      this._showHiddenScriptsDialog();
+      this._settings.set_string('prefs-open-page', 'hidden');
+      this.openPreferences();
     }, Gio.icon_new_for_string('view-conceal-symbolic'));
     this._bindPointerCursor(hiddenScriptsItem.actor);
 
     const settingsItem = this._contextMenu.addAction(t.settings || 'Settings', () => {
+      this._settings.set_string('prefs-open-page', '');
       this.openPreferences();
     }, Gio.icon_new_for_string('preferences-system-symbolic'));
     this._bindPointerCursor(settingsItem.actor);
@@ -971,11 +852,6 @@ export default class LauncherExtension extends Extension {
     if (this._searchEntry && this._searchTextChangedId) {
       this._searchEntry.get_clutter_text().disconnect(this._searchTextChangedId);
       this._searchTextChangedId = null;
-    }
-
-    if (this._hiddenScriptsDialog) {
-      this._hiddenScriptsDialog.destroy();
-      this._hiddenScriptsDialog = null;
     }
 
     this._destroyScriptContextMenu();

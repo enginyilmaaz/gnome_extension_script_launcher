@@ -67,10 +67,105 @@ export default class LauncherPreferences extends ExtensionPreferences {
     }
   }
 
+  _buildHiddenScriptsPage(window, settings, t) {
+    const page = new Adw.PreferencesPage();
+    const group = new Adw.PreferencesGroup({
+      title: t.hidden_scripts || 'Hidden Scripts',
+    });
+    page.add(group);
+
+    const emptyRow = new Adw.ActionRow({
+      title: t.no_hidden_scripts || 'No hidden scripts',
+    });
+
+    const scriptsPath = settings.get_string('path');
+    const stripExt = settings.get_boolean('strip');
+    const defaultIcon = settings.get_string('default-icon') || 'pan-end-symbolic';
+    const rows = [];
+
+    const updateEmpty = () => {
+      if (rows.length === 0) {
+        if (!emptyRow.get_parent()) {
+          group.add(emptyRow);
+        }
+      } else if (emptyRow.get_parent()) {
+        group.remove(emptyRow);
+      }
+    };
+
+    const buildIcon = (scriptName) => {
+      const baseName = scriptName.replace(/\.[^.]+$/, "");
+      const svg = `${scriptsPath}/${baseName}.svg`;
+      const png = `${scriptsPath}/${baseName}.png`;
+      if (GLib.file_test(svg, GLib.FileTest.EXISTS)) {
+        return Gio.icon_new_for_string(svg);
+      }
+      if (GLib.file_test(png, GLib.FileTest.EXISTS)) {
+        return Gio.icon_new_for_string(png);
+      }
+      return Gio.ThemedIcon.new(defaultIcon);
+    };
+
+    const addRow = (scriptName) => {
+      const baseName = scriptName.replace(/\.[^.]+$/, "");
+      const displayName = stripExt ? baseName : scriptName;
+
+      const row = new Adw.ActionRow({ title: displayName });
+      row.add_prefix(new Gtk.Image({ gicon: buildIcon(scriptName) }));
+
+      const btn = new Gtk.Button({
+        label: t.unhide || 'Unhide',
+        valign: Gtk.Align.CENTER,
+      });
+      btn.connect('clicked', () => {
+        let list = [];
+        try {
+          list = JSON.parse(settings.get_string('hidden-scripts'));
+        } catch (e) {
+          list = [];
+        }
+        const idx = list.indexOf(scriptName);
+        if (idx >= 0) {
+          list.splice(idx, 1);
+          settings.set_string('hidden-scripts', JSON.stringify(list));
+        }
+        group.remove(row);
+        const i = rows.indexOf(row);
+        if (i >= 0) {
+          rows.splice(i, 1);
+        }
+        updateEmpty();
+      });
+      row.add_suffix(btn);
+
+      group.add(row);
+      rows.push(row);
+    };
+
+    let hidden = [];
+    try {
+      hidden = JSON.parse(settings.get_string('hidden-scripts'));
+    } catch (e) {
+      hidden = [];
+    }
+    hidden.forEach(addRow);
+    updateEmpty();
+
+    window.add(page);
+    window.set_default_size(600, 500);
+  }
+
   fillPreferencesWindow(window) {
     const settings = this.getSettings();
     const extPath = this.path;
     let t = _loadLocaleData(extPath, settings.get_string("language"));
+
+    const openPage = settings.get_string("prefs-open-page");
+    settings.set_string("prefs-open-page", "");
+    if (openPage === "hidden") {
+      this._buildHiddenScriptsPage(window, settings, t);
+      return;
+    }
 
     const page = new Adw.PreferencesPage();
 
