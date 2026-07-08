@@ -12,7 +12,7 @@ A GNOME Shell extension that lets you launch scripts from the top panel with a s
 - **Search** - Filter scripts instantly with the built-in search bar
 - **Pinned Scripts** - Keep selected scripts at the top of the list
 - **Script Context Menu** - Right-click a script to Run, Run in Terminal, Pin/Unpin, or Hide it
-- **Hidden Scripts** - Hide scripts from the list and restore them from a "Hidden Scripts" dialog opened from the panel icon
+- **Hidden Scripts** - Hide scripts from the list and restore them from a "Hidden Scripts" window opened from the panel icon
 - **Right-Click Settings** - Open extension preferences from the panel icon context menu
 - **Show Search Toggle** - Hide or show the search field from preferences
 - **Menu Size Override** - Set custom width and height values for the popup list
