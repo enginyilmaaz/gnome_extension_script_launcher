@@ -36,5 +36,10 @@
   "unpin": "Rimuovi fissaggio",
   "no_scripts_found": "Nessuno script trovato",
   "directory_not_found": "Directory non trovata",
-  "pinned": "Fissati"
+  "pinned": "Fissati",
+  "hide": "Nascondi",
+  "unhide": "Mostra",
+  "hidden_scripts": "Script nascosti",
+  "no_hidden_scripts": "Nessuno script nascosto",
+  "close": "Chiudi"
 }
