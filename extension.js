@@ -3,6 +3,7 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import * as BoxPointer from "resource:///org/gnome/shell/ui/boxpointer.js";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
+import * as ModalDialog from "resource:///org/gnome/shell/ui/modalDialog.js";
 import * as Config from "resource:///org/gnome/shell/misc/config.js";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
@@ -75,6 +76,7 @@ export default class LauncherExtension extends Extension {
     this._searchTextChangedId = null;
     this._contextMenuOpenStateId = null;
     this._langChangedId = null;
+    this._hiddenScriptsDialog = null;
   }
 
 
@@ -143,6 +145,63 @@ export default class LauncherExtension extends Extension {
     }
     this._setPinnedScripts(pinned);
     this._fillMenu();
+  }
+
+  _getHiddenScripts() {
+    try {
+      return JSON.parse(this._settings.get_string("hidden-scripts"));
+    } catch (e) {
+      return [];
+    }
+  }
+
+  _setHiddenScripts(hidden) {
+    this._settings.set_string("hidden-scripts", JSON.stringify(hidden));
+  }
+
+  _hideScript(scriptName) {
+    const hidden = this._getHiddenScripts();
+    if (!hidden.includes(scriptName)) {
+      hidden.push(scriptName);
+      this._setHiddenScripts(hidden);
+    }
+    this._fillMenu();
+  }
+
+  _unhideScript(scriptName) {
+    const hidden = this._getHiddenScripts();
+    const idx = hidden.indexOf(scriptName);
+    if (idx >= 0) {
+      hidden.splice(idx, 1);
+      this._setHiddenScripts(hidden);
+    }
+    this._fillMenu();
+  }
+
+  _buildScriptInfo(scriptName) {
+    const baseName = scriptName.replace(/\.[^.]+$/, "");
+    const defaultIcon = this._settings.get_string("default-icon");
+    const stripExt = this._settings.get_boolean("strip");
+
+    let iconName = null;
+    const svgPath = Gio.File.new_for_path(`${this._path}/${baseName}.svg`);
+    const pngPath = Gio.File.new_for_path(`${this._path}/${baseName}.png`);
+
+    if (svgPath.query_exists(null)) {
+      iconName = svgPath.get_path();
+    } else if (pngPath.query_exists(null)) {
+      iconName = pngPath.get_path();
+    }
+
+    const icon = iconName ?
+      Gio.icon_new_for_string(iconName) :
+      Gio.ThemedIcon.new(defaultIcon || BULLET);
+
+    const displayName = stripExt
+      ? scriptName.replace(/\.[^\.]+$/, "")
+      : scriptName;
+
+    return { scriptName, displayName, icon };
   }
 
   _bindPointerCursor(actor) {
@@ -256,8 +315,7 @@ export default class LauncherExtension extends Extension {
       return;
     }
 
-    const dafaultIcon = this._settings.get_string("default-icon");
-    const stripExt = this._settings.get_boolean("strip");
+    const hidden = this._getHiddenScripts();
     const pinned = this._getPinnedScripts();
 
     const scripts = this._getScripts(this._path);
@@ -270,31 +328,15 @@ export default class LauncherExtension extends Extension {
       return;
     }
 
-    // Build script info list
-    const allScriptInfos = scripts.map((script) => {
-      const scriptName = script.get_name();
-      const baseName = scriptName.replace(/\.[^.]+$/, "");
-
-      let iconName = null;
-      const svgPath = Gio.File.new_for_path(`${this._path}/${baseName}.svg`);
-      const pngPath = Gio.File.new_for_path(`${this._path}/${baseName}.png`);
-
-      if (svgPath.query_exists(null)) {
-        iconName = svgPath.get_path();
-      } else if (pngPath.query_exists(null)) {
-        iconName = pngPath.get_path();
-      }
-
-      const icon = iconName ?
-        Gio.icon_new_for_string(iconName) :
-        Gio.ThemedIcon.new(dafaultIcon || BULLET);
-
-      const displayName = stripExt
-        ? scriptName.replace(/\.[^\.]+$/, "")
-        : scriptName;
-
-      return { scriptName, displayName, icon, isPinned: pinned.includes(scriptName) };
-    });
+    // Build script info list (excluding hidden scripts)
+    const allScriptInfos = scripts
+      .map((script) => script.get_name())
+      .filter((scriptName) => !hidden.includes(scriptName))
+      .map((scriptName) => {
+        const info = this._buildScriptInfo(scriptName);
+        info.isPinned = pinned.includes(scriptName);
+        return info;
+      });
 
     // Pinned scripts first
     const pinnedScripts = allScriptInfos.filter(s => s.isPinned);
@@ -415,6 +457,16 @@ export default class LauncherExtension extends Extension {
     );
     this._bindPointerCursor(pinItem.actor);
 
+    const hideItem = menu.addAction(
+      t.hide || 'Hide',
+      () => {
+        this._destroyScriptContextMenu();
+        this._hideScript(info.scriptName);
+      },
+      Gio.ThemedIcon.new('view-conceal-symbolic')
+    );
+    this._bindPointerCursor(hideItem.actor);
+
     this._scriptContextMenu = menu;
     this._pendingContextInfo = info.scriptName;
     this._scriptContextMenuManager.addMenu(menu);
@@ -516,6 +568,115 @@ export default class LauncherExtension extends Extension {
     this._pendingContextInfo = null;
   }
 
+  _showHiddenScriptsDialog() {
+    const lang = this._settings.get_string("language");
+    const t = getLocale(this.path, lang);
+
+    // Ensure the path is current (menu may never have been opened yet)
+    this._path = this._settings.get_string("path");
+
+    if (this._hiddenScriptsDialog) {
+      this._hiddenScriptsDialog.destroy();
+      this._hiddenScriptsDialog = null;
+    }
+
+    // destroyOnClose:false so the instance lifecycle is managed explicitly
+    // (destroyed and nulled on the next open and in disable()); this avoids a
+    // self-'destroy' signal handler that would need a matching disconnect.
+    const dialog = new ModalDialog.ModalDialog({ destroyOnClose: false });
+    this._hiddenScriptsDialog = dialog;
+
+    const title = new St.Label({
+      text: t.hidden_scripts || 'Hidden Scripts',
+      style: 'font-weight: bold; font-size: 1.2em; margin-bottom: 12px;',
+      x_align: Clutter.ActorAlign.CENTER,
+    });
+    dialog.contentLayout.add_child(title);
+
+    const scrollView = new St.ScrollView({
+      style: 'max-height: 400px; min-width: 360px;',
+    });
+    const listBox = new St.BoxLayout({
+      vertical: true,
+      style: 'spacing: 4px;',
+    });
+    const shellVersion = parseFloat(Config.PACKAGE_VERSION).toString().slice(0, 2);
+    if (shellVersion == 45) {
+      scrollView.add_actor(listBox);
+    } else {
+      scrollView.add_child(listBox);
+    }
+    dialog.contentLayout.add_child(scrollView);
+
+    const emptyLabel = new St.Label({
+      text: t.no_hidden_scripts || 'No hidden scripts',
+      style: 'margin: 12px;',
+      x_align: Clutter.ActorAlign.CENTER,
+    });
+
+    const path = this._path;
+    const hidden = this._getHiddenScripts();
+    const rows = [];
+
+    const refreshEmptyState = () => {
+      emptyLabel.visible = !rows.some((row) => row.visible);
+    };
+
+    hidden.forEach((scriptName) => {
+      // Skip hidden scripts whose file no longer exists on disk
+      const file = Gio.File.new_for_path(`${path}/${scriptName}`);
+      if (!file.query_exists(null)) {
+        return;
+      }
+
+      const info = this._buildScriptInfo(scriptName);
+
+      const row = new St.BoxLayout({ style: 'spacing: 8px; padding: 6px;' });
+
+      row.add_child(new St.Icon({
+        gicon: info.icon,
+        icon_size: 20,
+        y_align: Clutter.ActorAlign.CENTER,
+      }));
+
+      row.add_child(new St.Label({
+        text: info.displayName,
+        y_align: Clutter.ActorAlign.CENTER,
+        x_expand: true,
+      }));
+
+      const unhideBtn = new St.Button({
+        label: t.unhide || 'Unhide',
+        style_class: 'button',
+        style: 'padding: 4px 12px;',
+        y_align: Clutter.ActorAlign.CENTER,
+      });
+      this._bindPointerCursor(unhideBtn);
+      unhideBtn.connect('clicked', () => {
+        this._unhideScript(scriptName);
+        row.visible = false;
+        refreshEmptyState();
+      });
+      row.add_child(unhideBtn);
+
+      listBox.add_child(row);
+      rows.push(row);
+    });
+
+    listBox.add_child(emptyLabel);
+    refreshEmptyState();
+
+    dialog.setButtons([
+      {
+        label: t.close || 'Close',
+        action: () => dialog.close(),
+        key: Clutter.KEY_Escape,
+      },
+    ]);
+
+    dialog.open();
+  }
+
   // Helper function to get the icon based on settings
   _getIcon() {
     // Default: use bundled panel.svg
@@ -602,6 +763,12 @@ export default class LauncherExtension extends Extension {
     this._contextMenu = new PopupMenu.PopupMenu(this._indicator, 0.5, St.Side.TOP);
     Main.uiGroup.add_child(this._contextMenu.actor);
     this._contextMenu.actor.hide();
+
+    const hiddenScriptsItem = this._contextMenu.addAction(t.hidden_scripts || 'Hidden Scripts', () => {
+      this._contextMenu.close();
+      this._showHiddenScriptsDialog();
+    }, Gio.icon_new_for_string('view-conceal-symbolic'));
+    this._bindPointerCursor(hiddenScriptsItem.actor);
 
     const settingsItem = this._contextMenu.addAction(t.settings || 'Settings', () => {
       this.openPreferences();
@@ -804,6 +971,11 @@ export default class LauncherExtension extends Extension {
     if (this._searchEntry && this._searchTextChangedId) {
       this._searchEntry.get_clutter_text().disconnect(this._searchTextChangedId);
       this._searchTextChangedId = null;
+    }
+
+    if (this._hiddenScriptsDialog) {
+      this._hiddenScriptsDialog.destroy();
+      this._hiddenScriptsDialog = null;
     }
 
     this._destroyScriptContextMenu();
