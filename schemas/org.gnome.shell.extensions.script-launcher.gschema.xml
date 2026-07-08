@@ -19,12 +19,6 @@
     <key name="menu-height" type="i">
       <default>0</default>
     </key>
-    <key name="custom-icons" type="b">
-      <default>false</default>
-    </key>
-    <key name="custom-icon-map" type="s">
-      <default>"{}"</default>
-    </key>
     <key name="pinned-scripts" type="s">
       <default>"[]"</default>
     </key>

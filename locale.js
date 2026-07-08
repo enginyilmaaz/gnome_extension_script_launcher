@@ -61,7 +61,3 @@ export function getLocale(extensionPath, langSetting) {
   if (code !== 'en' && _cache['en']) return _cache['en'];
   return {};
 }
-
-export function clearCache() {
-  _cache = {};
-}

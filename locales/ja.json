@@ -20,7 +20,6 @@
   "filter_file_extensions_desc": "特定の拡張子のファイルのみを表示",
   "extensions": "拡張子",
   "extensions_desc": "カンマ区切り（例: .sh,.py,.js）",
-  "backup_import": "バックアップとインポート",
   "export_settings": "設定をエクスポート",
   "export_settings_desc": "設定を.confファイルに保存",
   "import_settings": "設定をインポート",
@@ -36,10 +35,8 @@
   "unpin": "固定解除",
   "no_scripts_found": "スクリプトが見つかりません",
   "directory_not_found": "ディレクトリが見つかりません",
-  "pinned": "固定済み",
   "hide": "リストから隠す",
   "unhide": "再表示",
   "hidden_scripts": "非表示のスクリプト",
-  "no_hidden_scripts": "非表示のスクリプトはありません",
-  "close": "閉じる"
+  "no_hidden_scripts": "非表示のスクリプトはありません"
 }

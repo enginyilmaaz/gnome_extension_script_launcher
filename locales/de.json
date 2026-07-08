@@ -20,7 +20,6 @@
   "filter_file_extensions_desc": "Nur Dateien mit bestimmten Erweiterungen anzeigen",
   "extensions": "Erweiterungen",
   "extensions_desc": "Kommagetrennt (z.B. .sh,.py,.js)",
-  "backup_import": "Sicherung & Import",
   "export_settings": "Einstellungen exportieren",
   "export_settings_desc": "Einstellungen in eine .conf-Datei speichern",
   "import_settings": "Einstellungen importieren",
@@ -36,10 +35,8 @@
   "unpin": "Loslösen",
   "no_scripts_found": "Keine Skripte gefunden",
   "directory_not_found": "Verzeichnis nicht gefunden",
-  "pinned": "Angeheftet",
   "hide": "Aus Liste ausblenden",
   "unhide": "Einblenden",
   "hidden_scripts": "Ausgeblendete Skripte",
-  "no_hidden_scripts": "Keine ausgeblendeten Skripte",
-  "close": "Schließen"
+  "no_hidden_scripts": "Keine ausgeblendeten Skripte"
 }

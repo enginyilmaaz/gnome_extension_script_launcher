@@ -169,24 +169,6 @@ export default class LauncherPreferences extends ExtensionPreferences {
 
     const page = new Adw.PreferencesPage();
 
-    page.connect('realize', () => {
-      const walk = (widget) => {
-        if (widget.constructor.name === 'AdwClamp' || widget.constructor.name === 'Clamp') {
-          widget.set_maximum_size(640);
-          widget.set_tightening_threshold(640);
-          return;
-        }
-        if (widget.get_first_child) {
-          let child = widget.get_first_child();
-          while (child) {
-            walk(child);
-            child = child.get_next_sibling();
-          }
-        }
-      };
-      walk(page);
-    });
-
     const group = new Adw.PreferencesGroup();
     page.add(group);
 
