@@ -20,7 +20,6 @@
   "filter_file_extensions_desc": "Only show files with specific extensions in the list",
   "extensions": "Extensions",
   "extensions_desc": "Comma-separated (e.g. .sh,.py,.js)",
-  "backup_import": "Backup & Import",
   "export_settings": "Export Settings",
   "export_settings_desc": "Save settings to a .conf file",
   "import_settings": "Import Settings",
@@ -36,10 +35,8 @@
   "unpin": "Unpin",
   "no_scripts_found": "No scripts found",
   "directory_not_found": "Directory not found",
-  "pinned": "Pinned",
   "hide": "Hide to list",
   "unhide": "Unhide",
   "hidden_scripts": "Hidden Scripts",
-  "no_hidden_scripts": "No hidden scripts",
-  "close": "Close"
+  "no_hidden_scripts": "No hidden scripts"
 }

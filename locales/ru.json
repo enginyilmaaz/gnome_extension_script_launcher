@@ -20,7 +20,6 @@
   "filter_file_extensions_desc": "Показывать только файлы с определёнными расширениями",
   "extensions": "Расширения",
   "extensions_desc": "Через запятую (напр. .sh,.py,.js)",
-  "backup_import": "Резервное копирование и импорт",
   "export_settings": "Экспорт настроек",
   "export_settings_desc": "Сохранить настройки в файл .conf",
   "import_settings": "Импорт настроек",
@@ -36,10 +35,8 @@
   "unpin": "Открепить",
   "no_scripts_found": "Скрипты не найдены",
   "directory_not_found": "Каталог не найден",
-  "pinned": "Закреплённые",
   "hide": "Скрыть из списка",
   "unhide": "Показать",
   "hidden_scripts": "Скрытые скрипты",
-  "no_hidden_scripts": "Нет скрытых скриптов",
-  "close": "Закрыть"
+  "no_hidden_scripts": "Нет скрытых скриптов"
 }

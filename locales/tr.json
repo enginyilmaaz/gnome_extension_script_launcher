@@ -20,7 +20,6 @@
   "filter_file_extensions_desc": "Listede yalnızca belirli uzantılı dosyaları göster",
   "extensions": "Uzantılar",
   "extensions_desc": "Virgülle ayrılmış (ör. .sh,.py,.js)",
-  "backup_import": "Yedekleme ve İçe Aktarma",
   "export_settings": "Ayarları Dışa Aktar",
   "export_settings_desc": "Ayarları bir .conf dosyasına kaydet",
   "import_settings": "Ayarları İçe Aktar",
@@ -36,10 +35,8 @@
   "unpin": "Sabitlemeyi Kaldır",
   "no_scripts_found": "Betik bulunamadı",
   "directory_not_found": "Dizin bulunamadı",
-  "pinned": "Sabitlenmiş",
   "hide": "Listeden gizle",
   "unhide": "Göster",
   "hidden_scripts": "Gizli Scriptler",
-  "no_hidden_scripts": "Gizli script yok",
-  "close": "Kapat"
+  "no_hidden_scripts": "Gizli script yok"
 }

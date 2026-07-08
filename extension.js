@@ -9,7 +9,7 @@ import GLib from "gi://GLib";
 import St from "gi://St";
 import Clutter from "gi://Clutter";
 import Meta from "gi://Meta";
-import { getLocale, preloadLocale, clearCache } from "./locale.js";
+import { getLocale, preloadLocale } from "./locale.js";
 
 // Default icon for the top panel
 const DEFAULT_ICON = "utilities-terminal-symbolic";
@@ -63,7 +63,6 @@ export default class LauncherExtension extends Extension {
     this._searchEntry = null;
     this._searchMenuItem = null;
     this._allScripts = [];
-    this._toggleMenuKeybindingRegistered = false;
     this._scriptContextMenu = null;
     this._pendingContextInfo = null;
     this._scriptContextMenuManager = null;
@@ -377,12 +376,7 @@ export default class LauncherExtension extends Extension {
       return;
     }
 
-    const [x, y] = itemActor.get_transformed_position();
-    const [width, height] = itemActor.get_transformed_size();
-    const [stageX, stageY] = event?.get_coords?.() ?? [
-      x + Math.max(8, Math.min(width - 8, 32)),
-      y + Math.max(8, Math.round(height / 2)),
-    ];
+    const [stageX, stageY] = event.get_coords();
     const anchorX = stageX - 5;
 
     this._destroyScriptContextMenu();
@@ -614,16 +608,13 @@ export default class LauncherExtension extends Extension {
       can_focus: true,
     });
 
-    // Create search icon inside the entry
     const searchIcon = new St.Icon({
       icon_name: 'edit-find-symbolic',
       icon_size: 14,
     });
 
-    // Set the icon as primary icon (left side) of the entry
     this._searchEntry.set_primary_icon(searchIcon);
 
-    // Create search menu item with minimal padding
     this._searchMenuItem = new PopupMenu.PopupBaseMenuItem({
       reactive: false,
       can_focus: false,

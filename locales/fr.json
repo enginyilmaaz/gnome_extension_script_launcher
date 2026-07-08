@@ -20,7 +20,6 @@
   "filter_file_extensions_desc": "Afficher uniquement les fichiers avec des extensions spécifiques",
   "extensions": "Extensions",
   "extensions_desc": "Séparées par des virgules (ex. .sh,.py,.js)",
-  "backup_import": "Sauvegarde et importation",
   "export_settings": "Exporter les paramètres",
   "export_settings_desc": "Enregistrer les paramètres dans un fichier .conf",
   "import_settings": "Importer les paramètres",
@@ -36,10 +35,8 @@
   "unpin": "Désépingler",
   "no_scripts_found": "Aucun script trouvé",
   "directory_not_found": "Répertoire introuvable",
-  "pinned": "Épinglés",
   "hide": "Masquer de la liste",
   "unhide": "Afficher",
   "hidden_scripts": "Scripts masqués",
-  "no_hidden_scripts": "Aucun script masqué",
-  "close": "Fermer"
+  "no_hidden_scripts": "Aucun script masqué"
 }
