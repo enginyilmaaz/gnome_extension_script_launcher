@@ -28,6 +28,9 @@
     <key name="pinned-scripts" type="s">
       <default>"[]"</default>
     </key>
+    <key name="hidden-scripts" type="s">
+      <default>"[]"</default>
+    </key>
     <key name="language" type="s">
       <default>"auto"</default>
     </key>
