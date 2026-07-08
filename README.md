@@ -11,7 +11,8 @@ A GNOME Shell extension that lets you launch scripts from the top panel with a s
 - **Panel Menu** - Open the script list directly from the top panel
 - **Search** - Filter scripts instantly with the built-in search bar
 - **Pinned Scripts** - Keep selected scripts at the top of the list
-- **Script Context Menu** - Right-click a script to Run, Run in Terminal, or Pin/Unpin it
+- **Script Context Menu** - Right-click a script to Run, Run in Terminal, Pin/Unpin, or Hide it
+- **Hidden Scripts** - Hide scripts from the list and restore them from a "Hidden Scripts" dialog opened from the panel icon
 - **Right-Click Settings** - Open extension preferences from the panel icon context menu
 - **Show Search Toggle** - Hide or show the search field from preferences
 - **Menu Size Override** - Set custom width and height values for the popup list
@@ -37,8 +38,8 @@ A GNOME Shell extension that lets you launch scripts from the top panel with a s
 1. Place your scripts in `~/scripts` (default) or set a custom path in Preferences
 2. Click the panel icon to open the launcher menu
 3. Click a script to run it
-4. Right-click a script for Run in Terminal and Pin/Unpin actions
-5. Right-click the panel icon to open Settings
+4. Right-click a script for Run in Terminal, Pin/Unpin, and Hide actions
+5. Right-click the panel icon to open Hidden Scripts or Settings
 
 ### Compatibility
 

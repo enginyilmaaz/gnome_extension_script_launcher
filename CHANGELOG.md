@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-08
+
+- Add Hide action to the script right-click menu to hide scripts from the launcher list
+- Add "Hidden Scripts" dialog (opened from the panel icon menu) to view and unhide hidden scripts
+- Bump version to 1.2.0
+
 ## 2026-04-13
 
 - Fix EGO-L-002: add explicit destroy() calls for menu, searchEntry, and searchMenuItem in disable()
