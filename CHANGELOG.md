@@ -3,6 +3,7 @@
 ## 2026-07-11
 
 - Refactor signal handling to connectObject()/disconnectObject() for simpler cleanup tracking, and remove redundant typeof checks (per GNOME Extensions review)
+- Bump version to 1.2.3
 
 ## 2026-07-08
 
