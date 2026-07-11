@@ -6,6 +6,8 @@ A customized fork of [Launcher](https://extensions.gnome.org/extension/5874/laun
 
 A GNOME Shell extension that lets you launch scripts from the top panel with a searchable popup menu, pinned favorites, right-click actions, and import/exportable settings.
 
+[<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg" alt="Get it on GNOME Extensions" height="80">](https://extensions.gnome.org/extension/9671/script-launcher/)
+
 ### Features
 
 - **Panel Menu** - Open the script list directly from the top panel
@@ -26,6 +28,10 @@ A GNOME Shell extension that lets you launch scripts from the top panel with a s
 - **Multi-Language** - Includes EN, TR, RU, DE, IT, JA, FR, and ES with automatic language detection
 
 ### Installation
+
+**Recommended** — install from [extensions.gnome.org](https://extensions.gnome.org/extension/9671/script-launcher/): open the extension page and toggle it on (via the GNOME Extensions app or browser integration).
+
+**Manual install:**
 
 1. Clone or download this repository
 2. Copy to `~/.local/share/gnome-shell/extensions/script-launcher@enginyilmaaz/`
