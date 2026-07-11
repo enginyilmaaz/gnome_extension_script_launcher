@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-07-11
+
+- Refactor signal handling to connectObject()/disconnectObject() for simpler cleanup tracking, and remove redundant typeof checks (per GNOME Extensions review)
+
 ## 2026-07-08
 
 - Add "Hide to list" action to the script right-click menu to hide scripts from the launcher list

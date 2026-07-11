@@ -3,6 +3,7 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import * as BoxPointer from "resource:///org/gnome/shell/ui/boxpointer.js";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
+import { PopupMenuManager } from "resource:///org/gnome/shell/ui/popupMenu.js";
 import * as Config from "resource:///org/gnome/shell/misc/config.js";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
@@ -49,16 +50,11 @@ export default class LauncherExtension extends Extension {
   constructor(metadata) {
     super(metadata);
     this._indicator = null;
-    this._menuId = null;
     this._settings = null;
     this._launcher = null;
     this._menu = null;
     this._path = null;
     this._fileMonitor = null;
-    this._pathChangedId = null;
-    this._showSearchChangedId = null;
-    this._menuWidthChangedId = null;
-    this._menuHeightChangedId = null;
     this._refreshTimeout = null;
     this._searchEntry = null;
     this._searchMenuItem = null;
@@ -68,22 +64,13 @@ export default class LauncherExtension extends Extension {
     this._scriptContextMenuManager = null;
     this._scriptContextSourceActor = null;
     this._hoverCursorActor = null;
-    this._fileMonitorChangedId = null;
-    this._indicatorButtonPressId = null;
-    this._contextSourceButtonPressId = null;
-    this._searchTextChangedId = null;
-    this._contextMenuOpenStateId = null;
-    this._langChangedId = null;
   }
 
 
   _setupFileMonitor() {
     // Clean up existing monitor
     if (this._fileMonitor) {
-      if (this._fileMonitorChangedId) {
-        this._fileMonitor.disconnect(this._fileMonitorChangedId);
-        this._fileMonitorChangedId = null;
-      }
+      this._fileMonitor.disconnectObject(this);
       this._fileMonitor.cancel();
       this._fileMonitor = null;
     }
@@ -104,7 +91,7 @@ export default class LauncherExtension extends Extension {
         null
       );
 
-      this._fileMonitorChangedId = this._fileMonitor.connect('changed', () => {
+      this._fileMonitor.connectObject('changed', () => {
         // Debounce the refresh to avoid too many updates
         if (this._refreshTimeout) {
           GLib.source_remove(this._refreshTimeout);
@@ -114,7 +101,7 @@ export default class LauncherExtension extends Extension {
           this._refreshTimeout = null;
           return GLib.SOURCE_REMOVE;
         });
-      });
+      }, this);
     } catch (e) {
       // Silently fail if monitoring is not possible
     }
@@ -198,46 +185,34 @@ export default class LauncherExtension extends Extension {
 
     actor._scriptLauncherPointerBound = true;
 
-    actor._slEnterId = actor.connect('enter-event', () => {
-      this._hoverCursorActor = actor;
-      global.display.set_cursor(Meta.Cursor.POINTING_HAND);
-      return Clutter.EVENT_PROPAGATE;
-    });
+    actor.connectObject(
+      'enter-event', () => {
+        this._hoverCursorActor = actor;
+        global.display.set_cursor(Meta.Cursor.POINTING_HAND);
+        return Clutter.EVENT_PROPAGATE;
+      },
+      'leave-event', () => {
+        if (this._hoverCursorActor === actor) {
+          this._hoverCursorActor = null;
+          global.display.set_cursor(Meta.Cursor.DEFAULT);
+        }
+        return Clutter.EVENT_PROPAGATE;
+      },
+      'destroy', () => {
+        if (this._hoverCursorActor === actor) {
+          this._hoverCursorActor = null;
+          global.display.set_cursor(Meta.Cursor.DEFAULT);
+        }
+      },
+      this
+    );
 
-    actor._slLeaveId = actor.connect('leave-event', () => {
-      if (this._hoverCursorActor === actor) {
-        this._hoverCursorActor = null;
-        global.display.set_cursor(Meta.Cursor.DEFAULT);
-      }
-      return Clutter.EVENT_PROPAGATE;
-    });
-
-    actor._slDestroyId = actor.connect('destroy', () => {
-      if (this._hoverCursorActor === actor) {
-        this._hoverCursorActor = null;
-        global.display.set_cursor(Meta.Cursor.DEFAULT);
-      }
-    });
-
-    if (typeof actor.get_children === 'function') {
-      actor.get_children().forEach(child => this._bindPointerCursor(child));
-    }
+    actor.get_children().forEach(child => this._bindPointerCursor(child));
   }
 
   _unbindPointerCursor(actor) {
     if (!actor || !actor._scriptLauncherPointerBound) return;
-    if (actor._slEnterId) {
-      actor.disconnect(actor._slEnterId);
-      actor._slEnterId = null;
-    }
-    if (actor._slLeaveId) {
-      actor.disconnect(actor._slLeaveId);
-      actor._slLeaveId = null;
-    }
-    if (actor._slDestroyId) {
-      actor.disconnect(actor._slDestroyId);
-      actor._slDestroyId = null;
-    }
+    actor.disconnectObject(this);
     actor._scriptLauncherPointerBound = false;
   }
 
@@ -349,18 +324,20 @@ export default class LauncherExtension extends Extension {
     this._menu.innerMenu.addMenuItem(item);
     this._bindPointerCursor(item.actor);
 
-    item.connect('activate', () => {
-      this._launchScript(info.scriptName);
-    });
-
-    item.connect('captured-event', (actor, event) => {
-      if (event.type() === Clutter.EventType.BUTTON_PRESS &&
-          event.get_button() === Clutter.BUTTON_SECONDARY) {
-        this._showScriptContextMenu(info, t, event);
-        return Clutter.EVENT_STOP;
-      }
-      return Clutter.EVENT_PROPAGATE;
-    });
+    item.connectObject(
+      'activate', () => {
+        this._launchScript(info.scriptName);
+      },
+      'captured-event', (actor, event) => {
+        if (event.type() === Clutter.EventType.BUTTON_PRESS &&
+            event.get_button() === Clutter.BUTTON_SECONDARY) {
+          this._showScriptContextMenu(info, t, event);
+          return Clutter.EVENT_STOP;
+        }
+        return Clutter.EVENT_PROPAGATE;
+      },
+      this
+    );
 
     info.menuItem = item;
   }
@@ -400,11 +377,11 @@ export default class LauncherExtension extends Extension {
     menu.actor.hide();
     Main.uiGroup.add_child(menu.actor);
 
-    this._contextMenuOpenStateId = menu.connect('open-state-changed', (popup, open) => {
+    menu.connectObject('open-state-changed', (popup, open) => {
       if (!open && this._scriptContextMenu === popup) {
         this._destroyScriptContextMenu();
       }
-    });
+    }, this);
 
     const isPinned = this._getPinnedScripts().includes(info.scriptName);
     const runItem = menu.addAction(
@@ -538,10 +515,7 @@ export default class LauncherExtension extends Extension {
     if (this._scriptContextMenu) {
       const menu = this._scriptContextMenu;
       this._scriptContextMenu = null;
-      if (this._contextMenuOpenStateId) {
-        menu.disconnect(this._contextMenuOpenStateId);
-        this._contextMenuOpenStateId = null;
-      }
+      menu.disconnectObject(this);
       menu.destroy();
     }
     if (this._scriptContextSourceActor) {
@@ -648,7 +622,7 @@ export default class LauncherExtension extends Extension {
     this._bindPointerCursor(settingsItem.actor);
 
 
-    this._indicatorButtonPressId = this._indicator.connect('button-press-event', (actor, event) => {
+    this._indicator.connectObject('button-press-event', (actor, event) => {
       if (event.get_button() === Clutter.BUTTON_SECONDARY) {
         if (this._indicator.menu.isOpen)
           this._indicator.menu.close();
@@ -662,7 +636,7 @@ export default class LauncherExtension extends Extension {
           this._contextMenu.close();
       }
       return Clutter.EVENT_PROPAGATE;
-    });
+    }, this);
 
     Main.panel.addToStatusArea(this.metadata.name, this._indicator);
 
@@ -670,25 +644,25 @@ export default class LauncherExtension extends Extension {
       reactive: true,
       visible: false,
     });
-    this._contextSourceButtonPressId = this._scriptContextSourceActor.connect('button-press-event', () => {
+    this._scriptContextSourceActor.connectObject('button-press-event', () => {
       if (this._scriptContextMenu?.isOpen) {
         this._scriptContextMenu.close(BoxPointer.PopupAnimation.FULL);
       }
       return Clutter.EVENT_STOP;
-    });
+    }, this);
     Main.uiGroup.add_child(this._scriptContextSourceActor);
-    this._scriptContextMenuManager = new PopupMenu.PopupMenuManager({
+    this._scriptContextMenuManager = new PopupMenuManager({
       actor: this._scriptContextSourceActor,
     });
 
     // Connect search functionality
-    this._searchTextChangedId = this._searchEntry.get_clutter_text().connect('text-changed', () => {
+    this._searchEntry.get_clutter_text().connectObject('text-changed', () => {
       this._filterMenu();
-    });
+    }, this);
     this._updateMenuLayout();
     this._updateSearchVisibility();
 
-    this._menuId = this._indicator.menu.connect(
+    this._indicator.menu.connectObject(
       "open-state-changed",
       (menu, open) => {
         if (open) {
@@ -709,6 +683,7 @@ export default class LauncherExtension extends Extension {
           this._destroyScriptContextMenu();
         }
       },
+      this,
     );
   }
 
@@ -725,36 +700,22 @@ export default class LauncherExtension extends Extension {
     const lang = this._settings.get_string("language");
     await preloadLocale(this.path, lang);
 
-    // Preload new locale when language setting changes
-    this._langChangedId = this._settings.connect('changed::language', () => {
-      preloadLocale(this.path, this._settings.get_string("language"));
-    });
-
-    // Set up settings change listeners for icon settings
-    this._iconSettingsChangedId1 = this._settings.connect('changed::use-custom-top-icon', () => {
-      this._updateTopIcon();
-    });
-
-    this._iconSettingsChangedId2 = this._settings.connect('changed::top-icon-name', () => {
-      this._updateTopIcon();
-    });
-
-    // Set up listener for path changes to update file monitor
-    this._pathChangedId = this._settings.connect('changed::path', () => {
-      this._setupFileMonitor();
-    });
-    this._showSearchChangedId = this._settings.connect('changed::show-search', () => {
-      this._updateSearchVisibility();
-    });
+    // Settings listeners; all cleared with a single disconnectObject(this)
+    this._settings.connectObject(
+      'changed::language', () => {
+        preloadLocale(this.path, this._settings.get_string("language"));
+      },
+      'changed::use-custom-top-icon', () => this._updateTopIcon(),
+      'changed::top-icon-name', () => this._updateTopIcon(),
+      'changed::path', () => this._setupFileMonitor(),
+      'changed::show-search', () => this._updateSearchVisibility(),
+      this
+    );
     if (this._settings.settings_schema?.has_key('menu-width')) {
-      this._menuWidthChangedId = this._settings.connect('changed::menu-width', () => {
-        this._updateMenuLayout();
-      });
+      this._settings.connectObject('changed::menu-width', () => this._updateMenuLayout(), this);
     }
     if (this._settings.settings_schema?.has_key('menu-height')) {
-      this._menuHeightChangedId = this._settings.connect('changed::menu-height', () => {
-        this._updateMenuLayout();
-      });
+      this._settings.connectObject('changed::menu-height', () => this._updateMenuLayout(), this);
     }
 
     this._addIndicator();
@@ -794,55 +755,20 @@ export default class LauncherExtension extends Extension {
 
     // Clean up file monitor
     if (this._fileMonitor) {
-      if (this._fileMonitorChangedId) {
-        this._fileMonitor.disconnect(this._fileMonitorChangedId);
-        this._fileMonitorChangedId = null;
-      }
+      this._fileMonitor.disconnectObject(this);
       this._fileMonitor.cancel();
       this._fileMonitor = null;
     }
 
-    // Disconnect settings listeners
+    // Disconnect every tracked signal with one call per object
     if (this._settings) {
-      if (this._iconSettingsChangedId1) {
-        this._settings.disconnect(this._iconSettingsChangedId1);
-        this._iconSettingsChangedId1 = null;
-      }
-      if (this._iconSettingsChangedId2) {
-        this._settings.disconnect(this._iconSettingsChangedId2);
-        this._iconSettingsChangedId2 = null;
-      }
-      if (this._pathChangedId) {
-        this._settings.disconnect(this._pathChangedId);
-        this._pathChangedId = null;
-      }
-      if (this._showSearchChangedId) {
-        this._settings.disconnect(this._showSearchChangedId);
-        this._showSearchChangedId = null;
-      }
-      if (this._menuWidthChangedId) {
-        this._settings.disconnect(this._menuWidthChangedId);
-        this._menuWidthChangedId = null;
-      }
-      if (this._menuHeightChangedId) {
-        this._settings.disconnect(this._menuHeightChangedId);
-        this._menuHeightChangedId = null;
-      }
-      if (this._langChangedId) {
-        this._settings.disconnect(this._langChangedId);
-        this._langChangedId = null;
-      }
+      this._settings.disconnectObject(this);
     }
-
-    // Disconnect menu
-    if (this._indicator && this._menuId) {
-      this._indicator.menu.disconnect(this._menuId);
+    if (this._indicator) {
+      this._indicator.menu.disconnectObject(this);
     }
-
-    // Disconnect search text-changed signal
-    if (this._searchEntry && this._searchTextChangedId) {
-      this._searchEntry.get_clutter_text().disconnect(this._searchTextChangedId);
-      this._searchTextChangedId = null;
+    if (this._searchEntry) {
+      this._searchEntry.get_clutter_text().disconnectObject(this);
     }
 
     this._destroyScriptContextMenu();
@@ -857,19 +783,11 @@ export default class LauncherExtension extends Extension {
     }
 
     if (this._scriptContextSourceActor) {
-      if (this._contextSourceButtonPressId) {
-        this._scriptContextSourceActor.disconnect(this._contextSourceButtonPressId);
-        this._contextSourceButtonPressId = null;
-      }
+      this._scriptContextSourceActor.disconnectObject(this);
       this._scriptContextSourceActor.destroy();
       this._scriptContextSourceActor = null;
     }
-    if (this._scriptContextMenuManager) {
-      if (typeof this._scriptContextMenuManager.destroy === 'function') {
-        this._scriptContextMenuManager.destroy();
-      }
-      this._scriptContextMenuManager = null;
-    }
+    this._scriptContextMenuManager = null;
 
     if (this._menu) {
       this._menu.destroy();
@@ -887,10 +805,7 @@ export default class LauncherExtension extends Extension {
     }
 
     if (this._indicator) {
-      if (this._indicatorButtonPressId) {
-        this._indicator.disconnect(this._indicatorButtonPressId);
-        this._indicatorButtonPressId = null;
-      }
+      this._indicator.disconnectObject(this);
       this._unbindPointerCursor(this._indicator);
       this._indicator.destroy();
       this._indicator = null;
@@ -902,7 +817,6 @@ export default class LauncherExtension extends Extension {
       this._hoverCursorActor = null;
     }
 
-    this._menuId = null;
     this._settings = null;
     this._launcher = null;
     this._allScripts = [];
